@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXPASS - Dashboard</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;800&display=swap" rel="stylesheet">
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <style>
+        /* Estilos específicos para o layout interno do Dashboard */
+        body { background-color: #F5F5F5; margin: 0; }
+        .dashboard-container { display: flex; min-height: 100vh; }
+        
+        .sidebar { 
+            width: 260px; 
+            background-color: #333333; 
+            color: white; 
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main-content { flex: 1; padding: 40px; overflow-y: auto; }
+        
+        .header-dash { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+        
+        /* Grid de Cards */
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px; }
+        .stat-card { 
+            background: white; 
+            padding: 25px; 
+            border-radius: 16px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
+            transition: transform 0.3s;
+        }
+        .stat-card:hover { transform: translateY(-5px); }
+        .stat-card h4 { color: #888; font-size: 13px; font-weight: 500; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        .stat-card .value { font-size: 26px; font-weight: 800; color: #333; }
+        
+        /* Lista de Transações */
+        .activity-section { background: white; margin-top: 40px; border-radius: 16px; padding: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .activity-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; color: #aaa; font-size: 12px; text-transform: uppercase; padding-bottom: 15px; border-bottom: 1px solid #eee; }
+        td { padding: 18px 0; border-bottom: 1px solid #f9f9f9; font-size: 14px; }
+        .val-neg { color: #dc3545; font-weight: 800; }
+        .val-pos { color: #28a745; font-weight: 800; }
+        
+        .badge { background: #f0f0f0; color: #666; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 500; }
+        
+        .logout-link { margin-top: auto; color: #ff4d4d; text-decoration: none; font-weight: 500; display: flex; align-items: center; gap: 10px; }
+
+        /* Estilos do Modal de Nova Transação */
+        .modal-overlay {
+            display: none; position: fixed; z-index: 9999; left: 0; top: 0; 
+            width: 100%; height: 100%; background: rgba(0,0,0,0.6); 
+            align-items: center; justify-content: center;
+        }
+        .modal-content {
+            background: white; padding: 40px; border-radius: 16px; 
+            width: 100%; max-width: 450px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .form-group { display: flex; flex-direction: column; gap: 15px; }
+        .form-input { padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Montserrat', sans-serif; }
+        .form-actions { display: flex; gap: 10px; margin-top: 10px; }
+        .btn-cancel { flex: 1; padding: 12px; background: #eee; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; }
+        .btn-save { flex: 2; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="logo"><strong>NEX</strong>PASS</div>
+            <nav style="margin-top: 60px; display: flex; flex-direction: column; gap: 25px;">
+                <a href="/dashboard" style="color: #007BFF; text-decoration: none; font-weight: 800; display: flex; align-items: center; gap: 12px;">
+                    <i data-lucide="layout-dashboard" size="20"></i> Resumo
+                </a>
+                <a href="#" style="color: #ccc; text-decoration: none; display: flex; align-items: center; gap: 12px;">
+                    <i data-lucide="wallet" size="20"></i> Minhas Contas
+                </a>
+                <a href="#" style="color: #ccc; text-decoration: none; display: flex; align-items: center; gap: 12px;">
+                    <i data-lucide="bar-chart-3" size="20"></i> Investimentos
+                </a>
+                <a href="#" style="color: #ccc; text-decoration: none; display: flex; align-items: center; gap: 12px;">
+                    <i data-lucide="target" size="20"></i> Metas
+                </a>
+            </nav>
+            
+            <a href="/logout" class="logout-link">
+                <i data-lucide="log-out" size="20"></i> Sair
+            </a>
+        </aside>
+
+        <main class="main-content">
+            <header class="header-dash">
+                <div>
+                    <h1 style="font-weight: 800; font-size: 28px; color: #333;">Olá, {{ info.nome }}!</h1>
+                    <p style="color: #888; font-size: 14px;">Aqui está o resumo da sua vida financeira hoje.</p>
+                </div>
+                <button onclick="toggleModal()" class="btn-primary" style="display: flex; align-items: center; gap: 10px; border: none; cursor: pointer;">
+                    <i data-lucide="plus-circle" size="18"></i> Nova Transação
+                </button>
+            </header>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h4><i data-lucide="piggy-bank" size="16"></i> Saldo Total</h4>
+                    <div class="value">{{ info.saldo }}</div>
+                </div>
+                <div class="stat-card">
+                    <h4><i data-lucide="arrow-up-circle" size="16" style="color: #28a745;"></i> Entradas (Mês)</h4>
+                    <div class="value" style="color: #28a745;">{{ info.entradas }}</div>
+                </div>
+                <div class="stat-card">
+                    <h4><i data-lucide="arrow-down-circle" size="16" style="color: #dc3545;"></i> Saídas (Mês)</h4>
+                    <div class="value" style="color: #dc3545;">{{ info.saidas }}</div>
+                </div>
+            </div>
+
+            <section class="activity-section">
+                <div class="activity-header">
+                    <h3 style="font-weight: 800; color: #333;">Últimas Atividades</h3>
+                    <a href="#" style="color: #007BFF; font-size: 13px; text-decoration: none; font-weight: 500;">Ver extrato completo</a>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Descrição</th>
+                            <th>Categoria</th>
+                            <th>Data</th>
+                            <th style="text-align: right;">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in transacoes %}
+                        <tr>
+                            <td style="font-weight: 500;">{{ t.descricao }}</td>
+                            <td><span class="badge">{{ t.categoria }}</span></td>
+                            <td style="color: #888;">{{ t.data }}</td>
+                            <td class="{% if t.tipo == 'despesa' %}val-neg{% else %}val-pos{% endif %}" style="text-align: right;">
+                                {% if t.tipo == 'despesa' %}-{% else %}+{% endif %} R$ {{ "%.2f"|format(t.valor) }}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" style="text-align: center; color: #aaa; padding: 30px;">
+                                Nenhuma transação cadastrada. Clique em "Nova Transação" para começar.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+        </main>
+    </div>
+
+    <div id="modalTransacao" class="modal-overlay">
+        <div class="modal-content">
+            <h2 style="font-weight: 800; margin-bottom: 25px; color: #333;">Nova Transação</h2>
+            <form action="/add_transacao" method="POST" class="form-group">
+                <input type="text" name="descricao" class="form-input" placeholder="Descrição (ex: Supermercado)" required>
+                
+                <input type="number" step="0.01" name="valor" class="form-input" placeholder="Valor (ex: 150.00)" required>
+                
+                <select name="tipo" class="form-input">
+                    <option value="despesa">Despesa</option>
+                    <option value="receita">Receita</option>
+                </select>
+
+                <select name="categoria" class="form-input">
+                    <option value="Alimentação">Alimentação</option>
+                    <option value="Moradia">Moradia</option>
+                    <option value="Transporte">Transporte</option>
+                    <option value="Lazer">Lazer</option>
+                    <option value="Salário">Salário</option>
+                    <option value="Outros">Outros</option>
+                </select>
+
+                <input type="date" name="data" class="form-input" required>
+
+                <div class="form-actions">
+                    <button type="button" onclick="toggleModal()" class="btn-cancel">Cancelar</button>
+                    <button type="submit" class="btn-primary btn-save">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        // Função para abrir e fechar o modal
+        function toggleModal() {
+            const modal = document.getElementById('modalTransacao');
+            if (modal.style.display === 'none' || modal.style.display === '') {
+                modal.style.display = 'flex';
+            } else {
+                modal.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

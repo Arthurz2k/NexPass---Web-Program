@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>NEXPASS - Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="auth-page">
+    <div class="auth-container">
+        <div class="auth-card">
+            <h2>Aceder à Conta</h2>
+
+           {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                  <div class="alerta alerta-{{ category }}">
+                    {{ message }}
+                  </div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+
+            <form action="/login" method="POST" class="auth-form">
+                <div class="input-group">
+                    <label>E-mail</label>
+                    <input type="email" name="email" required placeholder="seu@email.com">
+                </div>
+                <div class="input-group">
+                    <label>Senha</label>
+                    <input type="password" name="senha" required placeholder="sua senha">
+                </div>
+                <button type="submit" class="btn-primary btn-block">Entrar</button>
+            </form>
+            <p class="auth-footer">Não tem conta? <a href="/cadastro">Criar agora</a></p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,399 @@
+/* Variáveis de Cores baseadas no PDF */
+:root {
+    --blue-primary: #007BFF;
+    --blue-hover: #0056B3;
+    --text-dark: #333333;
+    --bg-light: #F5F5F5;
+    --white: #FFFFFF;
+}
+
+/* Reset básico e Tipografia */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Montserrat', sans-serif;
+    background-color: var(--bg-light);
+    color: var(--text-dark);
+}
+
+/* ================= Navbar ================= */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 5%;
+    background-color: var(--bg-light);
+}
+
+.logo {
+    font-size: 24px;
+    font-weight: 400; /* Regular */
+}
+
+.logo strong {
+    font-weight: 800; /* Extra-Bold */
+}
+
+.nav-links {
+    display: flex;
+    gap: 30px;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: var(--text-dark);
+    font-weight: 500; /* Medium */
+    transition: color 0.3s;
+}
+
+.nav-links a:hover {
+    color: var(--blue-primary);
+}
+
+.nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.login-link {
+    text-decoration: none;
+    color: var(--text-dark);
+    font-weight: 500;
+}
+
+/* ================= Botões ================= */
+.btn-primary {
+    background-color: var(--blue-primary);
+    color: var(--white);
+    padding: 10px 24px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 500; /* Medium */
+    transition: background-color 0.3s;
+}
+
+.btn-primary:hover {
+    background-color: var(--blue-hover);
+}
+
+/* ================= Hero Section ================= */
+.hero-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 80px 10%;
+}
+
+.hero-content h1 {
+    font-size: 42px;
+    font-weight: 800; /* Extra-Bold */
+    margin-bottom: 30px;
+    line-height: 1.2;
+}
+
+.hero-icon {
+    width: 250px;
+    height: 250px;
+    color: var(--blue-primary);
+}
+
+/* ================= Cards ================= */
+.features-section {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    padding: 40px 10%;
+}
+
+.card {
+    background-color: var(--white);
+    padding: 30px;
+    border-radius: 16px;
+    width: 30%;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+.card-active {
+    background-color: #E8F0FE; /* Um fundo azul claro para destacar "Orçamentos" */
+    border: 1px solid var(--blue-primary);
+}
+
+.card h3 {
+    font-weight: 800; /* Extra-bold */
+    margin: 15px 0 10px 0;
+}
+
+.card p {
+    font-weight: 400; /* Regular */
+    font-size: 14px;
+    color: #666;
+}
+
+.card-icon {
+    width: 40px;
+    height: 40px;
+    color: var(--text-dark);
+    margin: 0 auto;
+}
+/* ================= Auth Pages (Cadastro/Login) ================= */
+.auth-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: var(--bg-light);
+}
+
+.auth-container {
+    width: 100%;
+    max-width: 400px;
+    padding: 20px;
+}
+
+.auth-card {
+    background-color: var(--white);
+    padding: 40px;
+    border-radius: 16px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+    text-align: center;
+}
+
+.auth-card h2 {
+    font-weight: 800;
+    font-size: 24px;
+    margin-bottom: 30px;
+    color: var(--text-dark);
+}
+
+.auth-form {
+    text-align: left;
+}
+
+.input-group {
+    margin-bottom: 20px;
+}
+
+.input-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: var(--text-dark);
+}
+
+.input-group input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-family: 'Montserrat', sans-serif;
+    background-color: #FAFAFA;
+}
+
+.remember-me {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 25px;
+    font-size: 14px;
+}
+
+.btn-block {
+    width: 100%;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.auth-footer {
+    margin-top: 20px;
+    font-size: 14px;
+}
+
+.auth-footer a {
+    color: var(--blue-primary);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+/* Divisor "ou" */
+.divider {
+    margin: 25px 0;
+    position: relative;
+    border-bottom: 1px solid #eee;
+}
+
+.divider span {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--white);
+    padding: 0 15px;
+    color: #999;
+    font-size: 12px;
+}
+
+/* Botões Sociais */
+.social-auth {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.btn-social {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: var(--white);
+    border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 8px;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.btn-social:hover {
+    background: #f9f9f9;
+}
+
+.icon-small {
+    width: 18px;
+    height: 18px;
+}
+
+/* ================= Alertas ================= */
+.alerta {
+    padding: 12px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+}
+
+.alerta-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.alerta-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+/* ================= Efeitos Globais ================= */
+html {
+    /* Faz a página deslizar suavemente ao clicar nos links do menu */
+    scroll-behavior: smooth; 
+}
+
+/* ================= Navbar e Animação ================= */
+.nav-links a {
+    text-decoration: none;
+    color: var(--text-dark);
+    font-weight: 500;
+    position: relative; /* Necessário para o traço animado */
+    padding-bottom: 5px; /* Espaço entre o texto e o traço */
+    transition: color 0.3s;
+}
+
+/* O "traço invisível" que fica por baixo do texto */
+.nav-links a::after {
+    content: '';
+    position: absolute;
+    width: 0; /* Começa com tamanho zero */
+    height: 2px;
+    background-color: var(--text-dark); /* Cor do traço escuro */
+    bottom: 0;
+    left: 0;
+    transition: width 0.3s ease-in-out; /* Animação suave */
+}
+
+/* Quando passa o rato (hover) ou quando tem a classe .active */
+.nav-links a:hover::after,
+.nav-links a.active::after {
+    width: 100%; /* O traço cresce até ocupar 100% da largura da palavra */
+}
+
+/* ================= Novas Seções (Soluções e Recursos) ================= */
+.section-padding {
+    padding: 80px 10%;
+    text-align: center;
+}
+
+.section-title {
+    font-size: 32px;
+    font-weight: 800;
+    margin-bottom: 15px;
+    color: var(--text-dark);
+}
+
+.section-subtitle {
+    color: #666;
+    margin-bottom: 50px;
+    font-size: 16px;
+}
+
+.solutions-grid {
+    display: flex;
+    gap: 40px;
+    justify-content: center;
+    text-align: left;
+}
+
+.solution-item {
+    flex: 1;
+    background: var(--white);
+    padding: 30px;
+    border-radius: 12px;
+    border-left: 4px solid var(--blue-primary);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+}
+
+.solution-item h3 { margin: 15px 0 10px 0; font-weight: 800; }
+.solution-item p { color: #666; font-size: 14px; line-height: 1.6; }
+
+/* ================= Footer ================= */
+footer {
+    background-color: #333333;
+    color: white;
+    padding: 60px 10% 20px 10%;
+}
+
+.footer-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 40px;
+    flex-wrap: wrap;
+}
+
+.footer-col { flex: 1; min-width: 200px; }
+.footer-col h4 { margin-bottom: 25px; font-weight: 800; font-size: 18px; }
+.footer-col ul { list-style: none; }
+.footer-col ul li { margin-bottom: 12px; }
+.footer-col ul li a { color: #ccc; text-decoration: none; transition: 0.3s; font-size: 14px; }
+.footer-col ul li a:hover { color: var(--blue-primary); padding-left: 5px; }
+
+.social-links { display: flex; gap: 15px; margin-top: 20px; }
+.social-icon { color: white; transition: 0.3s; }
+.social-icon:hover { color: var(--blue-primary); transform: translateY(-3px); }
+
+.footer-bottom {
+    margin-top: 50px;
+    padding-top: 20px;
+    border-top: 1px solid #444;
+    text-align: center;
+    font-size: 12px;
+    color: #888;
+}

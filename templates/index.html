@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>NEXPASS - Domine suas Finanças</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header class="navbar">
+        <div class="logo"><strong>NEX</strong>PASS</div>
+        <nav class="nav-links">
+            <a href="#home" class="active">Home</a>
+            <a href="#solucoes">Soluções</a>
+            <a href="#recursos">Recursos</a>
+        </nav>
+        <div class="nav-actions">
+            <a href="/login" class="login-link">Login</a>
+            <a href="/cadastro" class="btn-primary">COMEÇAR AGORA</a>
+        </div>
+    </header>
+
+    <main id="home" class="hero-section">
+        <div class="hero-content">
+            <h1>Domine suas Finanças<br>- O seu próximo passo</h1>
+            <a href="/cadastro" class="btn-primary">COMEÇAR AGORA</a>
+        </div>
+        <div class="hero-image"><i data-lucide="trending-up" class="hero-icon"></i></div>
+    </main>
+
+    <section id="solucoes" class="section-padding">
+        <h2 class="section-title">O que o NEXPASS resolve?</h2>
+        <div class="solutions-grid">
+            <div class="solution-item">
+                <i data-lucide="pie-chart" color="#007BFF"></i>
+                <h3>Visão Clara</h3>
+                <p>Agrupamos os seus gastos por categorias para decisões rápidas.</p>
+            </div>
+            <div class="solution-item">
+                <i data-lucide="bell-ring" color="#007BFF"></i>
+                <h3>Alertas</h3>
+                <p>Receba avisos antes de ultrapassar o seu orçamento mensal.</p>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="footer-container">
+            <div class="footer-col">
+                <div class="logo"><strong>NEX</strong>PASS</div>
+                <p>O futuro das tuas finanças começa aqui.</p>
+            </div>
+            <div class="footer-col">
+                <h4>Links</h4>
+                <a href="#solucoes">Soluções</a><br><a href="#recursos">Recursos</a>
+            </div>
+        </div>
+        <div class="footer-bottom">&copy; 2026 NEXPASS - Direitos Reservados</div>
+    </footer>
+
+    <script>lucide.createIcons();</script>
+</body>
+</html>
