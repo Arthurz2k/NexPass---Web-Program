@@ -7,70 +7,114 @@
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;400;500;800&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        :root {
+            --primary-blue: #007BFF;
+            --hover-blue: #0056B3;
+            --dark-gray: #333333;
+            --light-gray: #F5F5F5;
+            --white: #FFFFFF;
+        }
+
+        body { font-family: 'Montserrat', sans-serif; background-color: var(--light-gray); color: var(--dark-gray); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+        .login-card { background-color: var(--white); padding: 40px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.06); width: 100%; max-width: 400px; text-align: center; }
+        .logo-img { height: 45px; margin-bottom: 20px; object-fit: contain; }
+        h2 { font-weight: 800; margin-bottom: 25px; font-size: 24px; }
+        
+        .form-group { text-align: left; margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: 500; margin-bottom: 8px; font-size: 13px; color: #555; }
+        .form-group input { width: 100%; padding: 12px 15px; border: 1px solid #ddd; border-radius: 10px; font-family: 'Montserrat', sans-serif; font-size: 14px; box-sizing: border-box; transition: 0.3s; }
+        .form-group input:focus { outline: none; border-color: var(--primary-blue); }
+        
+        .btn-primary { background-color: var(--primary-blue); color: var(--white); padding: 14px; border: none; border-radius: 10px; width: 100%; font-weight: 800; font-size: 15px; cursor: pointer; transition: 0.3s; margin-top: 10px; box-shadow: 0 8px 20px rgba(0, 123, 255, 0.25); }
+        .btn-primary:hover { background-color: var(--hover-blue); transform: translateY(-2px); box-shadow: 0 12px 25px rgba(0, 123, 255, 0.35); }
+        
+        .register-link { margin-top: 25px; font-size: 14px; color: #666; }
+        .register-link a { color: var(--primary-blue); font-weight: 800; text-decoration: none; }
+        .register-link a:hover { text-decoration: underline; }
+
+        /* Estilo da mensagem de erro do Javascript */
+        #erro-msg { color: #dc3545; font-size: 12px; font-weight: 500; text-align: left; margin-top: 5px; min-height: 15px; display: block; }
+        
+        /* Dicas de senha */
+        .senha-dicas { font-size: 11px; color: #888; text-align: left; margin-top: 5px; line-height: 1.4; }
+    </style>
 </head>
-<body class="auth-page">
+<body>
 
-    <div class="auth-container">
-        <div class="auth-card">
-            <h2>Crie sua Conta</h2>
+    <div class="login-card">
+        <img src="{{ url_for('static', filename='img/logo.png') }}" alt="NEXPASS Logo" class="logo-img">
+        <h2>Crie sua Conta</h2>
+
+        <form action="/cadastro" method="POST" onsubmit="return validarCadastro()">
+            <div class="form-group">
+                <label for="nome">Nome Completo</label>
+                <input type="text" id="nome" name="nome" placeholder="Seu nome" required>
+            </div>
+
+            <div class="form-group">
+                <label for="email">E-mail</label>
+                <input type="email" id="email" name="email" placeholder="seu@email.com" required>
+            </div>
             
-            <form action="/cadastro" method="POST" class="auth-form">
-                <div class="input-group">
-                    <label for="name">Nome Completo</label>
-                    <input type="text" id="name" name="nome" placeholder="Seu nome aqui" required>
-                </div>
-
-                <div class="input-group">
-                    <label for="email">E-mail</label>
-                    <input type="email" id="email" name="email" placeholder="email@exemplo.com" required>
-                </div>
-
-                <div class="input-group">
-                    <label for="password">Senha</label>
-                    <input type="password" id="password" name="senha" placeholder="Sua senha" required>
-                </div>
-
-                <div class="input-group">
-                    <label for="confirm-password">Confirmar Senha</label>
-                    <input type="password" id="confirm-password" placeholder="Repita a senha" required>
-                </div>
-
-                <div class="remember-me">
-                    <input type="checkbox" id="remember">
-                    <label for="remember">Lembrar-me</label>
-                </div>
-
-                <button type="submit" class="btn-primary btn-block">Criar Conta</button>
-            </form>
-
-            <p class="auth-footer">
-                 Já tem uma conta? <a href="/login">Login</a>
-            </p>
-
-            <div class="divider">
-                <span>ou</span>
+            <div class="form-group">
+                <label for="senha">Senha</label>
+                <input type="password" id="senha" name="senha" placeholder="Crie uma senha forte" required>
+                <div class="senha-dicas">Mínimo 8 caracteres, contendo maiúscula, minúscula, número e símbolo (@, #, etc).</div>
             </div>
 
-            <div class="social-auth">
-                <button type="button" class="btn-social">
-                    <img src="https://www.google.com/favicon.ico" alt="Google" width="18">
-                    Continuar com Google
-                </button>
-                <button type="button" class="btn-social">
-                    <i data-lucide="apple" class="icon-small"></i>
-                    Continuar com Apple
-                </button>
+            <div class="form-group">
+                <label for="confirmar_senha">Confirme sua Senha</label>
+                <input type="password" id="confirmar_senha" name="confirmar_senha" placeholder="Repita a senha" required>
+                <span id="erro-msg"></span>
             </div>
+            
+            <button type="submit" class="btn-primary">Criar Conta</button>
+        </form>
+        
+        <div class="register-link">
+            Já tem uma conta? <a href="/login">Faça Login</a>
         </div>
     </div>
 
     <script>
-        lucide.createIcons();
+        
+        function validarCadastro() {
+            const email = document.getElementById('email').value;
+            const senha = document.getElementById('senha').value;
+            const confirmarSenha = document.getElementById('confirmar_senha').value;
+            const erroMsg = document.getElementById('erro-msg');
+            
+            // Nova Regra de E-mail: Exige o @ e o ponto (ex: .com)
+            const regexEmail = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+            // Regra da Senha Forte
+            const regexSenha = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
+            if (!regexEmail.test(email)) {
+                erroMsg.textContent = "Digite um e-mail válido (ex: seu@email.com).";
+                document.getElementById('email').focus();
+                return false;
+            }
+
+            if (senha !== confirmarSenha) {
+                erroMsg.textContent = "As senhas não coincidem!";
+                document.getElementById('confirmar_senha').focus();
+                return false;
+            }
+
+            if (!regexSenha.test(senha)) {
+                erroMsg.textContent = "A senha não atende aos requisitos de segurança.";
+                document.getElementById('senha').focus();
+                return false;
+            }
+
+            erroMsg.textContent = "";
+            return true;
+        }
     </script>
+
 </body>
 </html>

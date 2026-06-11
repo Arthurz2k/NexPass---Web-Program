@@ -2,19 +2,121 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>NEXPASS - Domine suas Finanças</title>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;800&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXPASS - O seu próximo passo financeiro</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;400;500;800&display=swap" rel="stylesheet">
+    
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <style>
+        
+        .nav-links { display: flex; gap: 30px; }
+        .nav-links a { text-decoration: none; color: var(--dark-gray); font-weight: 500; font-size: 15px; transition: 0.3s; }
+        .nav-links a:hover { color: var(--primary-blue); }
+
+        :root {
+            --primary-blue: #007BFF;
+            --hover-blue: #0056B3;
+            --dark-gray: #333333;
+            --light-gray: #F5F5F5;
+            --white: #FFFFFF;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', sans-serif; background-color: var(--light-gray); color: var(--dark-gray); overflow-x: hidden; }
+        
+        h1, h2, h3, h4 { font-weight: 800; }
+        p, span, a { font-weight: 400; }
+        .font-medium { font-weight: 500; }
+
+        /* Navegação */
+        .navbar {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 20px 8%; background-color: var(--light-gray);
+            position: sticky; top: 0; z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05); /* Sombra sutil na barra */
+        }
+        .nav-links { display: flex; gap: 30px; }
+        .nav-links a { text-decoration: none; color: var(--dark-gray); font-weight: 500; font-size: 15px; transition: 0.3s; }
+        .nav-links a:hover { color: var(--primary-blue); }
+
+        .nav-actions { display: flex; align-items: center; gap: 20px; }
+        .login-link { text-decoration: none; color: var(--dark-gray); font-weight: 500; font-size: 15px; transition: 0.3s; }
+        .login-link:hover { color: var(--primary-blue); }
+        
+        .btn-primary {
+            background-color: var(--primary-blue); color: var(--white);
+            padding: 12px 28px; border-radius: 8px; text-decoration: none;
+            font-weight: 800; font-size: 14px; text-transform: uppercase;
+            transition: all 0.3s ease; border: none; cursor: pointer;
+            box-shadow: 0 8px 20px rgba(0, 123, 255, 0.25);
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 25px rgba(0, 123, 255, 0.35); }
+
+        /* HERO SECTION COM IMAGEM DE FUNDO */
+        .hero-section {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 80px 8%; min-height: 75vh;
+            
+            /* Truque de Ouro: Gradiente Escuro + Imagem dos Prédios */
+            background: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.65)), 
+                        url("{{ url_for('static', filename='img/predios.jpg') }}");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed; /* Efeito de profundidade ao rolar */
+        }
+        .hero-content { max-width: 50%; }
+        
+        /* Texto Branco para dar contraste com a foto escurecida */
+        .hero-content h1 { font-size: 56px; line-height: 1.2; margin-bottom: 30px; color: var(--white); }
+        .hero-image { flex: 1; display: flex; justify-content: center; position: relative; }
+        
+        .floating-icon { color: var(--primary-blue); animation: float 6s ease-in-out infinite; filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.5)); }
+        @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-20px); } 100% { transform: translateY(0px); } }
+
+        /* Soluções */
+        .section-padding { padding: 80px 8%; text-align: center; }
+        .section-title { font-size: 36px; margin-bottom: 50px; color: var(--dark-gray); }
+        .solutions-grid { display: flex; justify-content: center; gap: 40px; flex-wrap: wrap; }
+        .solution-card { background-color: var(--white); padding: 40px 30px; border-radius: 16px; width: 320px; text-align: left; box-shadow: 0 10px 40px rgba(0,0,0,0.06); border-top: 4px solid var(--primary-blue); transition: 0.3s; }
+        .solution-card:hover { transform: translateY(-10px); box-shadow: 0 20px 50px rgba(0,0,0,0.1); }
+        .solution-card h3 { margin: 20px 0 15px 0; font-size: 22px; }
+        .solution-card p { color: #666; line-height: 1.6; font-size: 15px; }
+
+        /* Bancos Compatíveis */
+        .bank-section { background-color: var(--white); padding: 80px 8%; text-align: center; }
+        .bank-subtitle { color: #888; margin-bottom: 40px; font-weight: 500; }
+        .bank-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 60px; align-items: center; }
+        .bank-card { display: flex; flex-direction: column; align-items: center; gap: 15px; filter: grayscale(100%); opacity: 0.6; transition: 0.4s; }
+        .bank-card:hover { filter: grayscale(0%); opacity: 1; transform: scale(1.05); }
+
+        /* Rodapé */
+        footer { background-color: var(--dark-gray); color: var(--white); padding: 60px 8% 30px 8%; }
+        .footer-container { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 40px; }
+        .footer-col { flex: 1; min-width: 200px; }
+        .footer-col h4 { margin-bottom: 25px; font-size: 18px; color: var(--white); }
+        .footer-col p { color: #aaa; line-height: 1.6; margin-top: 20px; }
+        .footer-col a { color: var(--primary-blue); text-decoration: none; display: block; margin-bottom: 15px; font-weight: 500; }
+        .footer-col a:hover { color: var(--white); }
+        .footer-bottom { margin-top: 50px; padding-top: 20px; border-top: 1px solid #444; text-align: center; color: #777; font-size: 14px; }
+    </style>
 </head>
 <body>
+
     <header class="navbar">
-        <div class="logo"><strong>NEX</strong>PASS</div>
+        <div class="logo">
+            <img src="{{ url_for('static', filename='img/logo.png') }}" alt="NEXPASS Logo" style="height: 65px; object-fit: contain;">
+        </div>
+        
         <nav class="nav-links">
-            <a href="#home" class="active">Home</a>
+            <a href="#home">Home</a>
             <a href="#solucoes">Soluções</a>
             <a href="#recursos">Recursos</a>
         </nav>
+        
         <div class="nav-actions">
             <a href="/login" class="login-link">Login</a>
             <a href="/cadastro" class="btn-primary">COMEÇAR AGORA</a>
@@ -24,23 +126,57 @@
     <main id="home" class="hero-section">
         <div class="hero-content">
             <h1>Domine suas Finanças<br>- O seu próximo passo</h1>
-            <a href="/cadastro" class="btn-primary">COMEÇAR AGORA</a>
+            <a href="/cadastro" class="btn-primary" style="display: inline-block;">COMEÇAR AGORA</a>
         </div>
-        <div class="hero-image"><i data-lucide="trending-up" class="hero-icon"></i></div>
+        <div class="hero-image">
+            <i data-lucide="trending-up" class="floating-icon" style="width: 280px; height: 280px; stroke-width: 2.5px;"></i>
+        </div>
     </main>
 
     <section id="solucoes" class="section-padding">
         <h2 class="section-title">O que o NEXPASS resolve?</h2>
         <div class="solutions-grid">
-            <div class="solution-item">
-                <i data-lucide="pie-chart" color="#007BFF"></i>
+            <div class="solution-card">
+                <i data-lucide="pie-chart" style="color: var(--primary-blue); width: 40px; height: 40px;"></i>
                 <h3>Visão Clara</h3>
-                <p>Agrupamos os seus gastos por categorias para decisões rápidas.</p>
+                <p>Agrupamos os seus gastos por categorias para decisões rápidas e assertivas sobre o seu dinheiro.</p>
             </div>
-            <div class="solution-item">
-                <i data-lucide="bell-ring" color="#007BFF"></i>
-                <h3>Alertas</h3>
-                <p>Receba avisos antes de ultrapassar o seu orçamento mensal.</p>
+            <div class="solution-card">
+                <i data-lucide="bell-ring" style="color: var(--primary-blue); width: 40px; height: 40px;"></i>
+                <h3>Alertas Inteligentes</h3>
+                <p>Receba avisos antes de ultrapassar o seu orçamento mensal estipulado para cada área da vida.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="bank-section">
+        <h2 class="section-title" style="margin-bottom: 10px;">Bancos Compatíveis</h2>
+        <p class="bank-subtitle">Importação direta e segura para os principais players do mercado.</p>
+        
+        <div class="bank-grid">
+            <div class="bank-card">
+                <img src="{{ url_for('static', filename='img/nubank.png') }}" alt="Nubank" style="height: 55px; object-fit: contain;">
+                <span class="font-medium">Nubank</span>
+            </div>
+            <div class="bank-card">
+                <img src="{{ url_for('static', filename='img/inter.png') }}" alt="Inter" style="height: 55px; object-fit: contain;">
+                <span class="font-medium">Banco Inter</span>
+            </div>
+            <div class="bank-card">
+                <img src="{{ url_for('static', filename='img/itau.png') }}" alt="Itaú" style="height: 55px; object-fit: contain;">
+                <span class="font-medium">Itaú</span>
+            </div>
+            <div class="bank-card">
+                <img src="{{ url_for('static', filename='img/mercadopago.png') }}" alt="Mercado Pago" style="height: 55px; object-fit: contain;">
+                <span class="font-medium">Mercado Pago</span>
+            </div>
+            <div class="bank-card">
+                <img src="{{ url_for('static', filename='img/santander.png') }}" alt="Santander" style="height: 55px; object-fit: contain;">
+                <span class="font-medium">Santander</span>
+            </div>
+            <div class="bank-card">
+                <img src="{{ url_for('static', filename='img/sicredi.png') }}" alt="Sicredi" style="height: 55px; object-fit: contain;">
+                <span class="font-medium">Sicredi</span>
             </div>
         </div>
     </section>
@@ -48,17 +184,23 @@
     <footer>
         <div class="footer-container">
             <div class="footer-col">
-                <div class="logo"><strong>NEX</strong>PASS</div>
-                <p>O futuro das tuas finanças começa aqui.</p>
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="NEXPASS Logo" style="height: 55px; filter: brightness(0) invert(1); object-fit: contain;">
+                <p>O futuro das tuas finanças começa aqui. Simples, rápido e seguro.</p>
             </div>
-            <div class="footer-col">
-                <h4>Links</h4>
-                <a href="#solucoes">Soluções</a><br><a href="#recursos">Recursos</a>
+            <div class="footer-col" style="text-align: right;">
+                <h4>Links Úteis</h4>
+                <a href="#solucoes">Nossas Soluções</a>
+                <a href="#recursos">Recursos</a>
+                <a href="/login">Área do Cliente</a>
             </div>
         </div>
-        <div class="footer-bottom">&copy; 2026 NEXPASS - Direitos Reservados</div>
+        <div class="footer-bottom">
+            &copy; 2026 NEXPASS - Todos os direitos reservados.
+        </div>
     </footer>
 
-    <script>lucide.createIcons();</script>
+    <script>
+        lucide.createIcons();
+    </script>
 </body>
 </html>

@@ -3,211 +3,349 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEXPASS - Dashboard</title>
+    <title>NEXPASS - Dashboard Inteligente</title>
     
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;800&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
-    
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.pluggy.ai/pluggy-connect/v2.7.0/pluggy-connect.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
     <style>
-        /* Estilos específicos para o layout interno do Dashboard */
-        body { background-color: #F5F5F5; margin: 0; }
-        .dashboard-container { display: flex; min-height: 100vh; }
+        /* Força o alerta moderno a ficar por cima da Pluggy */
+        div.swal2-container { z-index: 2147483647 !important; }
         
-        .sidebar { 
-            width: 260px; 
-            background-color: #333333; 
-            color: white; 
-            padding: 30px;
-            display: flex;
-            flex-direction: column;
-        }
-
+        /* Estilos Globais */
+        :root { --neon-blue: #00D4FF; --deep-blue: #007BFF; }
+        body { background: #f4f7f9; font-family: 'Montserrat', sans-serif; margin: 0; }
+        .dashboard-container { display: flex; min-height: 100vh; }
+        .sidebar { width: 260px; background: #121212; color: white; padding: 30px; display: flex; flex-direction: column; }
         .main-content { flex: 1; padding: 40px; overflow-y: auto; }
         
-        .header-dash { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
-        
-        /* Grid de Cards */
-        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px; }
-        .stat-card { 
-            background: white; 
-            padding: 25px; 
-            border-radius: 16px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
-            transition: transform 0.3s;
-        }
-        .stat-card:hover { transform: translateY(-5px); }
-        .stat-card h4 { color: #888; font-size: 13px; font-weight: 500; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
-        .stat-card .value { font-size: 26px; font-weight: 800; color: #333; }
-        
-        /* Lista de Transações */
-        .activity-section { background: white; margin-top: 40px; border-radius: 16px; padding: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        .activity-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
-        
-        table { width: 100%; border-collapse: collapse; }
-        th { text-align: left; color: #aaa; font-size: 12px; text-transform: uppercase; padding-bottom: 15px; border-bottom: 1px solid #eee; }
-        td { padding: 18px 0; border-bottom: 1px solid #f9f9f9; font-size: 14px; }
-        .val-neg { color: #dc3545; font-weight: 800; }
-        .val-pos { color: #28a745; font-weight: 800; }
-        
-        .badge { background: #f0f0f0; color: #666; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 500; }
-        
-        .logout-link { margin-top: auto; color: #ff4d4d; text-decoration: none; font-weight: 500; display: flex; align-items: center; gap: 10px; }
+        .header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .btn-futuristic { padding: 12px 20px; border-radius: 12px; border: none; font-weight: 700; cursor: pointer; transition: 0.3s; display: flex; align-items: center; gap: 8px; }
+        .btn-futuristic:hover { transform: scale(1.05); box-shadow: 0 0 15px rgba(0, 212, 255, 0.3); }
 
-        /* Estilos do Modal de Nova Transação */
-        .modal-overlay {
-            display: none; position: fixed; z-index: 9999; left: 0; top: 0; 
-            width: 100%; height: 100%; background: rgba(0,0,0,0.6); 
-            align-items: center; justify-content: center;
-        }
-        .modal-content {
-            background: white; padding: 40px; border-radius: 16px; 
-            width: 100%; max-width: 450px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-        }
-        .form-group { display: flex; flex-direction: column; gap: 15px; }
-        .form-input { padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Montserrat', sans-serif; }
-        .form-actions { display: flex; gap: 10px; margin-top: 10px; }
-        .btn-cancel { flex: 1; padding: 12px; background: #eee; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; }
-        .btn-save { flex: 2; border: none; cursor: pointer; }
+        .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.03); position: relative; overflow: hidden; }
+        .stat-card::after { content: ''; position: absolute; bottom: 0; left: 0; height: 4px; width: 100%; background: var(--deep-blue); opacity: 0.3; }
+
+        .main-grid { display: grid; grid-template-columns: 1.8fr 1.2fr; gap: 25px; }
+        .glass-panel { background: white; border-radius: 24px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.04); }
+
+        .alerta { padding: 15px; border-radius: 12px; margin-bottom: 20px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+        .alerta-success { background: #e6fffa; color: #234e52; border-left: 5px solid #38b2ac; }
+        .alerta-error { background: #fff5f5; color: #822727; border-left: 5px solid #e53e3e; }
+
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 40px; border-radius: 24px; width: 100%; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body>
 
-    <div class="dashboard-container">
-        <aside class="sidebar">
-            <div class="logo"><strong>NEX</strong>PASS</div>
-            <nav style="margin-top: 60px; display: flex; flex-direction: column; gap: 25px;">
-                <a href="/dashboard" style="color: #007BFF; text-decoration: none; font-weight: 800; display: flex; align-items: center; gap: 12px;">
-                    <i data-lucide="layout-dashboard" size="20"></i> Resumo
-                </a>
-                <a href="#" style="color: #ccc; text-decoration: none; display: flex; align-items: center; gap: 12px;">
-                    <i data-lucide="wallet" size="20"></i> Minhas Contas
-                </a>
-                <a href="#" style="color: #ccc; text-decoration: none; display: flex; align-items: center; gap: 12px;">
-                    <i data-lucide="bar-chart-3" size="20"></i> Investimentos
-                </a>
-                <a href="#" style="color: #ccc; text-decoration: none; display: flex; align-items: center; gap: 12px;">
-                    <i data-lucide="target" size="20"></i> Metas
-                </a>
-            </nav>
-            
-            <a href="/logout" class="logout-link">
-                <i data-lucide="log-out" size="20"></i> Sair
-            </a>
-        </aside>
-
-        <main class="main-content">
-            <header class="header-dash">
-                <div>
-                    <h1 style="font-weight: 800; font-size: 28px; color: #333;">Olá, {{ info.nome }}!</h1>
-                    <p style="color: #888; font-size: 14px;">Aqui está o resumo da sua vida financeira hoje.</p>
-                </div>
-                <button onclick="toggleModal()" class="btn-primary" style="display: flex; align-items: center; gap: 10px; border: none; cursor: pointer;">
-                    <i data-lucide="plus-circle" size="18"></i> Nova Transação
-                </button>
-            </header>
-
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <h4><i data-lucide="piggy-bank" size="16"></i> Saldo Total</h4>
-                    <div class="value">{{ info.saldo }}</div>
-                </div>
-                <div class="stat-card">
-                    <h4><i data-lucide="arrow-up-circle" size="16" style="color: #28a745;"></i> Entradas (Mês)</h4>
-                    <div class="value" style="color: #28a745;">{{ info.entradas }}</div>
-                </div>
-                <div class="stat-card">
-                    <h4><i data-lucide="arrow-down-circle" size="16" style="color: #dc3545;"></i> Saídas (Mês)</h4>
-                    <div class="value" style="color: #dc3545;">{{ info.saidas }}</div>
-                </div>
-            </div>
-
-            <section class="activity-section">
-                <div class="activity-header">
-                    <h3 style="font-weight: 800; color: #333;">Últimas Atividades</h3>
-                    <a href="#" style="color: #007BFF; font-size: 13px; text-decoration: none; font-weight: 500;">Ver extrato completo</a>
-                </div>
-
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Descrição</th>
-                            <th>Categoria</th>
-                            <th>Data</th>
-                            <th style="text-align: right;">Valor</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for t in transacoes %}
-                        <tr>
-                            <td style="font-weight: 500;">{{ t.descricao }}</td>
-                            <td><span class="badge">{{ t.categoria }}</span></td>
-                            <td style="color: #888;">{{ t.data }}</td>
-                            <td class="{% if t.tipo == 'despesa' %}val-neg{% else %}val-pos{% endif %}" style="text-align: right;">
-                                {% if t.tipo == 'despesa' %}-{% else %}+{% endif %} R$ {{ "%.2f"|format(t.valor) }}
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="4" style="text-align: center; color: #aaa; padding: 30px;">
-                                Nenhuma transação cadastrada. Clique em "Nova Transação" para começar.
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </section>
-        </main>
-    </div>
-
-    <div id="modalTransacao" class="modal-overlay">
-        <div class="modal-content">
-            <h2 style="font-weight: 800; margin-bottom: 25px; color: #333;">Nova Transação</h2>
-            <form action="/add_transacao" method="POST" class="form-group">
-                <input type="text" name="descricao" class="form-input" placeholder="Descrição (ex: Supermercado)" required>
-                
-                <input type="number" step="0.01" name="valor" class="form-input" placeholder="Valor (ex: 150.00)" required>
-                
-                <select name="tipo" class="form-input">
-                    <option value="despesa">Despesa</option>
-                    <option value="receita">Receita</option>
-                </select>
-
-                <select name="categoria" class="form-input">
-                    <option value="Alimentação">Alimentação</option>
-                    <option value="Moradia">Moradia</option>
-                    <option value="Transporte">Transporte</option>
-                    <option value="Lazer">Lazer</option>
-                    <option value="Salário">Salário</option>
-                    <option value="Outros">Outros</option>
-                </select>
-
-                <input type="date" name="data" class="form-input" required>
-
-                <div class="form-actions">
-                    <button type="button" onclick="toggleModal()" class="btn-cancel">Cancelar</button>
-                    <button type="submit" class="btn-primary btn-save">Salvar</button>
-                </div>
-            </form>
+<div class="dashboard-container">
+    <aside class="sidebar">
+        <div style="margin-bottom: 20px;">
+            <img src="{{ url_for('static', filename='img/logo.png') }}" alt="NEXPASS Logo" style="height: 65px; object-fit: contain; filter: brightness(0) invert(1);">
         </div>
+        
+        <nav style="margin-top: 30px; display: flex; flex-direction: column; gap: 25px;">
+            <a href="#" style="color: var(--neon-blue); text-decoration: none; font-weight: 800; display: flex; align-items: center; gap: 10px;"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+            <a href="/cartoes" style="color: #555; text-decoration: none; display: flex; align-items: center; gap: 10px;"><i data-lucide="credit-card"></i> Cartões</a>
+            <a href="#" style="color: #555; text-decoration: none; display: flex; align-items: center; gap: 10px;"><i data-lucide="trending-up"></i> Metas</a>
+            <a href="/logout" style="color: #ff4d4d; text-decoration: none; margin-top: auto; display: flex; align-items: center; gap: 10px;"><i data-lucide="log-out"></i> Sair</a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <header class="header-flex">
+            <div>
+                <h1 style="font-weight: 800; margin: 0;">Olá, {{ info.nome }}!</h1>
+                <p style="color: #888; margin: 5px 0 0 0;">Controle o seu futuro agora.</p>
+            </div>
+            
+            <div style="display: flex; gap: 15px;">
+                <form action="/clear_transacoes" method="POST" onsubmit="return confirm('ATENÇÃO: Deseja apagar TODOS os seus dados?');" style="margin:0;">
+                    <button type="submit" class="btn-futuristic" style="background: #dc3545; color: white;">
+                        <i data-lucide="trash-2"></i> Limpar
+                    </button>
+                </form>
+                
+                <button onclick="iniciarOpenFinance()" class="btn-futuristic" style="background: #28a745; color: white;">
+                    <i data-lucide="link"></i> Conectar Banco
+                </button>
+                
+                <button onclick="openModal('modalImport')" class="btn-futuristic" style="background: #222; color: white;">
+                    <i data-lucide="upload"></i> CSV
+                </button>
+                
+                <button onclick="openModal('modalAdd')" class="btn-futuristic" style="background: var(--deep-blue); color: white;">
+                    <i data-lucide="plus"></i> Novo
+                </button>
+            </div>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alerta alerta-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <div class="stats-row">
+            <div class="stat-card">
+                <span style="color: #999; font-size: 13px;">SALDO ATUAL</span>
+                <div style="font-size: 28px; font-weight: 800; color: #222; margin-top: 10px;">{{ info.saldo }}</div>
+            </div>
+            <div class="stat-card">
+                <span style="color: #999; font-size: 13px;">RECEITAS</span>
+                <div style="font-size: 28px; font-weight: 800; color: #28a745; margin-top: 10px;">{{ info.entradas }}</div>
+            </div>
+            <div class="stat-card">
+                <span style="color: #999; font-size: 13px;">DESPESAS</span>
+                <div style="font-size: 28px; font-weight: 800; color: #dc3545; margin-top: 10px;">{{ info.saidas }}</div>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            
+            <section class="glass-panel" style="max-height: 450px; overflow-y: auto; display: block; width: 100%;">
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                    <h3 style="font-weight: 800; margin: 0;">Atividades Recentes</h3>
+                    
+                    <form id="formFiltros" method="GET" action="/dashboard" style="display: flex; gap: 10px;">
+                        
+                        <select name="filtro_banco" onchange="document.getElementById('formFiltros').submit()" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd; background: white;">
+                            <option value="Todos" {% if filtro_banco == 'Todos' %}selected{% endif %}>Todos os Bancos</option>
+                            {% for b in all_bancos %}
+                                <option value="{{ b }}" {% if filtro_banco == b %}selected{% endif %}>{{ b }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <select name="filtro_tipo" onchange="document.getElementById('formFiltros').submit()" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd; background: white;">
+                            <option value="Todos" {% if filtro_tipo == 'Todos' %}selected{% endif %}>Todos os Tipos</option>
+                            <option value="Receita" {% if filtro_tipo == 'Receita' %}selected{% endif %}>Apenas Receitas</option>
+                            <option value="Despesa" {% if filtro_tipo == 'Despesa' %}selected{% endif %}>Apenas Despesas</option>
+                        </select>
+
+                        <select name="filtro_categoria" onchange="document.getElementById('formFiltros').submit()" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd; background: white;">
+                            <option value="Todas" {% if filtro_categoria == 'Todas' %}selected{% endif %}>Todas as Categorias</option>
+                            {% for c in all_cats %}
+                                <option value="{{ c }}" {% if filtro_categoria == c %}selected{% endif %}>{{ c }}</option>
+                            {% endfor %}
+                        </select>
+                    </form>
+
+                        <select name="filtro_categoria" onchange="document.getElementById('formFiltros').submit()" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd; background: white;">
+                            <option value="Todas" {% if filtro_categoria == 'Todas' %}selected{% endif %}>Todas as Categorias</option>
+                            {% for c in all_cats %}
+                                <option value="{{ c }}" {% if filtro_categoria == c %}selected{% endif %}>{{ c }}</option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                </div>
+                
+                <table style="width: 100%; border-collapse: collapse;">
+                    {% for t in transacoes %}
+                    <tr style="border-bottom: 1px solid #f0f0f0;">
+                        <td style="padding: 15px 0;">
+                            <strong>{{ t.descricao }}</strong><br>
+                            <span style="background: #f0f2f5; padding: 2px 8px; border-radius: 6px; font-size: 11px; color: #555;">{{ t.categoria }}</span>
+                            <small style="color: #aaa; margin-left: 10px;">{{ t.data }}</small>
+                        </td>
+                        <td style="text-align: right; font-weight: 800; color: {% if t.tipo|lower in ['despesa', 'saída', 'saida'] %}#dc3545{% else %}#28a745{% endif %};">
+                            {% if t.tipo|lower in ['despesa', 'saída', 'saida'] %}-{% else %}+{% endif %} R$ {{ "%.2f"|format(t.valor) }}
+                        </td>
+                        <td style="text-align: right; min-width: 80px;">
+                            <button onclick="preencherEdicao('{{ t.id }}', '{{ t.descricao }}', '{{ t.valor }}', '{{ t.tipo }}', '{{ t.categoria }}', '{{ t.data }}')" style="background:none; border:none; color:#007BFF; cursor:pointer;"><i data-lucide="edit-3" size="18"></i></button>
+                            <a href="/delete_transacao/{{ t.id }}" onclick="return confirm('Excluir esta transação?')" style="color:#dc3545; margin-left: 10px;"><i data-lucide="trash" size="18"></i></a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+                
+            </section> <section class="glass-panel">
+                <h3 style="font-weight: 800; margin-bottom: 25px;">Gastos por Categoria</h3>
+                <div style="height: 300px;"><canvas id="myChart"></canvas></div>
+            </section>
+        </div>
+    </main>
+</div>
+
+<datalist id="lista-categorias">
+    {% for c in categorias %}
+    <option value="{{ c }}">
+    {% endfor %}
+</datalist>
+
+<div id="modalAdd" class="modal">
+    <div class="modal-content">
+        <h2 style="font-weight: 800;">Nova Transação</h2>
+        <form action="/add_transacao" method="POST" style="display: flex; flex-direction: column; gap: 15px;">
+            <input type="text" name="descricao" placeholder="Descrição" required style="padding: 12px; border-radius: 10px; border: 1px solid #ddd;">
+            <input type="number" step="0.01" name="valor" placeholder="Valor (R$)" required style="padding: 12px; border-radius: 10px; border: 1px solid #ddd;">
+            <select name="tipo" style="padding: 12px; border-radius: 10px; border: 1px solid #ddd;">
+                <option value="despesa">Despesa</option>
+                <option value="receita">Receita</option>
+            </select>
+            <input type="text" name="categoria" list="lista-categorias" placeholder="Selecione ou digite nova categoria" required autocomplete="off" style="padding: 12px; border-radius: 10px; border: 1px solid #ddd;">
+            <input type="date" name="data" required style="padding: 12px; border-radius: 10px; border: 1px solid #ddd;">
+            
+            <div style="display: flex; gap: 10px;">
+                <button type="button" onclick="closeModal('modalAdd')" class="btn-futuristic" style="flex: 1; background: #eee; color: #333; justify-content: center;">Cancelar</button>
+                <button type="submit" class="btn-futuristic" style="flex: 2; background: var(--deep-blue); color: white; justify-content: center;">Salvar</button>
+            </div>
+        </form>
     </div>
+</div>
 
-    <script>
-        lucide.createIcons();
+<div id="modalEdit" class="modal">
+    <div class="modal-content">
+        <h2 style="font-weight: 800;">Editar Transação</h2>
+        <form action="/edit_transacao" method="POST" style="display: flex; flex-direction: column; gap: 15px;">
+            <input type="hidden" name="id" id="edit_id">
+            <input type="text" name="descricao" id="edit_descricao" required style="padding: 12px; border-radius: 10px; border: 1px solid #ddd;">
+            <input type="number" step="0.01" name="valor" id="edit_valor" required style="padding: 12px; border-radius: 10px; border: 1px solid #ddd;">
+            <select name="tipo" id="edit_tipo" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                    <option value="Receita">Receita (Entrada)</option>
+                    <option value="Despesa">Despesa (Saída)</option>
+                </select>
+            <input type="text" name="categoria" id="edit_categoria" list="lista-categorias" required autocomplete="off" style="padding: 12px; border-radius: 10px; border: 1px solid #ddd;">
+            <input type="date" name="data" id="edit_data" required style="padding: 12px; border-radius: 10px; border: 1px solid #ddd;">
+            
+            <div style="display: flex; gap: 10px;">
+                <button type="button" onclick="closeModal('modalEdit')" class="btn-futuristic" style="flex: 1; background: #eee; color: #333; justify-content: center;">Cancelar</button>
+                <button type="submit" class="btn-futuristic" style="flex: 2; background: var(--deep-blue); color: white; justify-content: center;">Atualizar</button>
+            </div>
+        </form>
+    </div>
+</div>
 
-        // Função para abrir e fechar o modal
-        function toggleModal() {
-            const modal = document.getElementById('modalTransacao');
-            if (modal.style.display === 'none' || modal.style.display === '') {
-                modal.style.display = 'flex';
-            } else {
-                modal.style.display = 'none';
+<div id="modalImport" class="modal">
+    <div class="modal-content">
+        <h2 style="font-weight: 800;">Importar CSV</h2>
+        <p style="color: #666; font-size: 13px;">Selecione o arquivo do Nubank, Inter ou Itaú.</p>
+        <form action="/importar_csv" method="POST" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 20px;">
+            <input type="file" name="arquivo_csv" accept=".csv" required style="padding: 15px; border: 2px dashed #ddd; border-radius: 15px; cursor: pointer;">
+            <div style="display: flex; gap: 10px;">
+                <button type="button" onclick="closeModal('modalImport')" class="btn-futuristic" style="flex: 1; background: #eee; color: #333; justify-content: center;">Cancelar</button>
+                <button type="submit" class="btn-futuristic" style="flex: 2; background: #222; color: white; justify-content: center;">Importar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    lucide.createIcons();
+    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    function preencherEdicao(id, desc, val, tipo, cat, data) {
+        document.getElementById('edit_id').value = id;
+        document.getElementById('edit_descricao').value = desc;
+        document.getElementById('edit_valor').value = val;
+        document.getElementById('edit_tipo').value = tipo;
+        document.getElementById('edit_categoria').value = cat;
+        document.getElementById('edit_data').value = data;
+        openModal('modalEdit');
+    }
+
+    async function iniciarOpenFinance() {
+        try {
+            const response = await fetch('/gerar_token_pluggy');
+            const data = await response.json();
+            
+            if(data.erro) {
+                Swal.fire('Erro no Servidor!', data.erro, 'error');
+                return;
             }
+
+            const pluggyConnect = new PluggyConnect({
+                connectToken: data.token,
+                includeSandbox: true, 
+                onSuccess: async (itemData) => {
+                    Swal.fire({
+                        title: 'Sincronizando...',
+                        text: 'Acesso autorizado! Puxando os dados do banco para o NEXPASS...',
+                        icon: 'info',
+                        allowOutsideClick: false,
+                        didOpen: () => { Swal.showLoading(); }
+                    });
+
+                    try {
+                        const res = await fetch('/sincronizar_pluggy', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ item_id: itemData.item.id })
+                        });
+                        const result = await res.json();
+                        
+                        if(result.sucesso) {
+                            Swal.fire({
+                                title: 'Mágica Concluída!',
+                                text: result.total + ' transações importadas com sucesso!',
+                                icon: 'success',
+                                confirmButtonColor: '#007BFF'
+                            }).then(() => {
+                                window.location.reload(); 
+                            });
+                        } else {
+                            Swal.fire('Erro ao importar', result.erro, 'error');
+                        }
+                    } catch (err) {
+                        Swal.fire('Falha de Comunicação', err.toString(), 'error');
+                    }
+                },
+                onError: (error) => {
+                    Swal.fire('Conexão Cancelada', error.message, 'warning');
+                }
+            });
+            pluggyConnect.init();
+
+        } catch(e) {
+            Swal.fire('Erro Crítico', e.message, 'error');
         }
-    </script>
+    }
+    
+    // GRÁFICO DINÂMICO
+    const labels_grafico = {{ labels_cat | tojson | safe }};
+    const dados_grafico = {{ valores_cat | tojson | safe }};
+    
+    const gerarCores = (qtd) => {
+        const cores = [];
+        for(let i = 0; i < qtd; i++) { cores.push(`hsl(${(i * 360) / qtd}, 70%, 60%)`); }
+        return cores;
+    };
+
+    const canvas = document.getElementById('myChart');
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
+        if (window.meuGrafico) { window.meuGrafico.destroy(); }
+
+        if(labels_grafico.length > 0) {
+            window.meuGrafico = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels_grafico,
+                    datasets: [{
+                        data: dados_grafico,
+                        backgroundColor: gerarCores(labels_grafico.length),
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: { cutout: '75%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } }, maintainAspectRatio: false }
+            });
+        } else {
+            window.meuGrafico = new Chart(ctx, {
+                type: 'doughnut',
+                data: { labels: ['Sem dados'], datasets: [{ data: [1], backgroundColor: ['#eee'] }] },
+                options: { cutout: '75%', plugins: { legend: { display: false } }, maintainAspectRatio: false }
+            });
+        }
+    }
+</script>
 </body>
 </html>

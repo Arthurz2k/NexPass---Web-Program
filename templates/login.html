@@ -2,38 +2,167 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NEXPASS - Login</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <style>
+        :root {
+            --primary-blue: #007BFF;
+            --hover-blue: #0056B3;
+            --dark-gray: #333333;
+            --light-gray: #F5F5F5;
+            --white: #FFFFFF;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--light-gray);
+            color: var(--dark-gray);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .login-card {
+            background-color: var(--white);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.06);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .logo-img {
+            height: 45px;
+            margin-bottom: 25px;
+            object-fit: contain;
+        }
+
+        h2 {
+            font-weight: 800;
+            margin-bottom: 30px;
+            font-size: 24px;
+        }
+
+        .form-group {
+            text-align: left;
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 14px;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+        }
+
+        .btn-primary {
+            background-color: var(--primary-blue);
+            color: var(--white);
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            width: 100%;
+            font-weight: 800;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+            box-shadow: 0 8px 20px rgba(0, 123, 255, 0.25);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--hover-blue);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 25px rgba(0, 123, 255, 0.35);
+        }
+
+        .register-link {
+            margin-top: 25px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .register-link a {
+            color: var(--primary-blue);
+            font-weight: 800;
+            text-decoration: none;
+        }
+
+        .register-link a:hover {
+            text-decoration: underline;
+        }
+
+        /* Avisos de erro no login */
+        .alerta {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            background: #fff5f5;
+            color: #822727;
+            border-left: 4px solid #e53e3e;
+            text-align: left;
+        }
+    </style>
 </head>
-<body class="auth-page">
-    <div class="auth-container">
-        <div class="auth-card">
-            <h2>Aceder à Conta</h2>
+<body>
 
-           {% with messages = get_flashed_messages(with_categories=true) %}
-              {% if messages %}
+    <div class="login-card">
+        <img src="{{ url_for('static', filename='img/logo.png') }}" alt="NEXPASS Logo" class="logo-img">
+        
+        <h2>Acesse sua Conta</h2>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
                 {% for category, message in messages %}
-                  <div class="alerta alerta-{{ category }}">
-                    {{ message }}
-                  </div>
+                    <div class="alerta">{{ message }}</div>
                 {% endfor %}
-              {% endif %}
-            {% endwith %}
+            {% endif %}
+        {% endwith %}
 
-            <form action="/login" method="POST" class="auth-form">
-                <div class="input-group">
-                    <label>E-mail</label>
-                    <input type="email" name="email" required placeholder="seu@email.com">
-                </div>
-                <div class="input-group">
-                    <label>Senha</label>
-                    <input type="password" name="senha" required placeholder="sua senha">
-                </div>
-                <button type="submit" class="btn-primary btn-block">Entrar</button>
-            </form>
-            <p class="auth-footer">Não tem conta? <a href="/cadastro">Criar agora</a></p>
+        <form action="/login" method="POST">
+            <div class="form-group">
+                <label for="email">E-mail</label>
+                <input type="email" id="email" name="email" placeholder="seu@email.com" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="senha">Senha</label>
+                <input type="password" id="senha" name="senha" placeholder="Sua senha" required>
+            </div>
+            
+            <button type="submit" class="btn-primary">Entrar</button>
+        </form>
+        
+        <div class="register-link">
+            Não tem conta? <a href="/cadastro">Criar agora</a>
         </div>
     </div>
+
 </body>
 </html>

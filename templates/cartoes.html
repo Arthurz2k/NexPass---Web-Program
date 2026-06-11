@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>NEXPASS - Meus Bancos</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root { --neon-blue: #00D4FF; --deep-blue: #007BFF; }
+        body { background: #f4f7f9; font-family: 'Montserrat', sans-serif; margin: 0; }
+        .dashboard-container { display: flex; min-height: 100vh; }
+        .sidebar { width: 260px; background: #121212; color: white; padding: 30px; display: flex; flex-direction: column; }
+        .main-content { flex: 1; padding: 40px; overflow-y: auto; }
+        
+        /* Estilo dos Cartões de Banco */
+        .grid-bancos { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 25px; margin-top: 30px; }
+        .banco-card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.04); display: flex; flex-direction: column; gap: 15px; position: relative; overflow: hidden; transition: 0.3s; }
+        .banco-card:hover { transform: translateY(-5px); box-shadow: 0 15px 35px rgba(0,0,0,0.08); }
+        .banco-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+        
+        /* Caso a imagem não exista, o ícone da carteira aparece no lugar */
+        .banco-logo { height: 40px; max-width: 120px; object-fit: contain; }
+        
+        .banco-valores { display: flex; justify-content: space-between; margin-top: 10px; }
+        .valor-item { display: flex; flex-direction: column; }
+        .valor-titulo { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+        .valor-numero { font-size: 16px; font-weight: 800; }
+        .saldo-destaque { font-size: 24px; font-weight: 800; color: #222; }
+    </style>
+</head>
+<body>
+
+<div class="dashboard-container">
+    <aside class="sidebar">
+        <div style="margin-bottom: 20px;">
+            <img src="{{ url_for('static', filename='img/logo.png') }}" alt="NEXPASS Logo" style="height: 65px; object-fit: contain; filter: brightness(0) invert(1);">
+        </div>
+        
+        <nav style="margin-top: 30px; display: flex; flex-direction: column; gap: 25px;">
+            <a href="/dashboard" style="color: #555; text-decoration: none; display: flex; align-items: center; gap: 10px;"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+            <a href="/cartoes" style="color: var(--neon-blue); font-weight: 800; text-decoration: none; display: flex; align-items: center; gap: 10px;"><i data-lucide="credit-card"></i> Cartões</a>
+            <a href="#" style="color: #555; text-decoration: none; display: flex; align-items: center; gap: 10px;"><i data-lucide="trending-up"></i> Metas</a>
+            <a href="/logout" style="color: #ff4d4d; text-decoration: none; margin-top: auto; display: flex; align-items: center; gap: 10px;"><i data-lucide="log-out"></i> Sair</a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <header>
+            <h1 style="font-weight: 800; margin: 0;">Meus Bancos</h1>
+            <p style="color: #888; margin: 5px 0 0 0;">Gestão individual de contas e instituições.</p>
+        </header>
+
+        <div class="grid-bancos">
+            {% for banco in bancos %}
+            <div class="banco-card" onclick="window.location.href='/dashboard?filtro_banco={{ banco.nome }}'" style="cursor: pointer;">
+                <div class="banco-header">
+                    <img src="{{ url_for('static', filename='img/' + banco.imagem) }}" alt="{{ banco.nome }}" class="banco-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                    <h3 style="margin: 0; font-weight: 800; display: none;">{{ banco.nome }}</h3>
+                    <i data-lucide="wallet" style="color: #aaa;"></i>
+                </div>
+                
+                <div>
+                    <span class="valor-titulo">Saldo Atual</span>
+                    <div class="saldo-destaque">R$ {{ "%.2f"|format(banco.saldo) }}</div>
+                </div>
+
+                <div class="banco-valores">
+                    <div class="valor-item">
+                        <span class="valor-titulo">Entradas</span>
+                        <span class="valor-numero" style="color: #28a745;">+ R$ {{ "%.2f"|format(banco.receitas) }}</span>
+                    </div>
+                    <div class="valor-item" style="text-align: right;">
+                        <span class="valor-titulo">Saídas</span>
+                        <span class="valor-numero" style="color: #dc3545;">- R$ {{ "%.2f"|format(banco.despesas) }}</span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </main>
+</div>
+
+<script>
+    lucide.createIcons();
+</script>
+</body>
+</html>
