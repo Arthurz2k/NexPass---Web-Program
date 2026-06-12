@@ -39,6 +39,44 @@
 
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); align-items: center; justify-content: center; }
         .modal-content { background: white; padding: 40px; border-radius: 24px; width: 100%; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.1); }
+        /* ==========================================
+           Ajustes Exclusivos para o Dashboard Mobile
+           ========================================== */
+        @media (max-width: 768px) {
+            .dashboard-container {
+                flex-direction: column !important; /* Empilha a barra lateral e o conteúdo */
+            }
+            .sidebar {
+                width: 100% !important; /* Barra lateral ocupa a largura toda no topo */
+                padding: 20px !important;
+            }
+            .main-content {
+                padding: 20px !important; /* Dá um respiro nas bordas do conteúdo */
+            }
+            .stats-row {
+                grid-template-columns: 1fr !important; /* Saldo, Entradas e Saídas ficam um embaixo do outro */
+            }
+            .main-grid {
+                grid-template-columns: 1fr !important; /* Atividades e Gráfico de pizza ficam um embaixo do outro */
+            }
+            .header-flex {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 20px !important;
+            }
+            .header-flex div:last-child {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                width: 100%;
+            }
+            .btn-futuristic {
+                flex: 1;
+                justify-content: center;
+                font-size: 13px;
+                padding: 10px;
+            }
+        }
     </style>
 </head>
 <body>
