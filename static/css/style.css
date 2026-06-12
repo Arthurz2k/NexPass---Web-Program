@@ -465,3 +465,88 @@ footer {
         .nav-links a:hover { color: var(--primary-blue); }
         .nav-links a:hover::after { width: 100%; }
         
+/* ==========================================================================
+   REGRAS DE RESPONSIVIDADE PARA CELULAR (NEXPASS MOBILE)
+   ========================================================================== */
+@media (max-width: 768px) {
+    .navbar {
+        flex-direction: column !important;
+        gap: 15px !important;
+        padding: 15px 5% !important;
+        text-align: center !important;
+    }
+    
+    .nav-links {
+        gap: 20px !important;
+    }
+    
+    .nav-actions {
+        flex-direction: column !important;
+        gap: 10px !important;
+        width: 100% !important;
+    }
+    
+    .btn-primary {
+        width: 100% !important;
+        text-align: center !important;
+    }
+    
+    .hero-section {
+        flex-direction: column-reverse !important;
+        padding: 40px 5% !important;
+        text-align: center !important;
+        gap: 30px !important;
+        background-attachment: scroll !important; /* Melhora a rolagem e performance no celular */
+    }
+    
+    .hero-content {
+        max-width: 100% !important;
+    }
+    
+    .hero-content h1 {
+        font-size: 32px !important;
+        margin-bottom: 20px !important;
+    }
+    
+    .floating-icon {
+        width: 160px !important;
+        height: 160px !important;
+    }
+    
+    .section-padding {
+        padding: 50px 5% !important;
+    }
+    
+    .section-title {
+        font-size: 26px !important;
+        margin-bottom: 30px !important;
+    }
+    
+    .solution-card {
+        width: 100% !important;
+    }
+    
+    .bank-section {
+        padding: 50px 5% !important;
+    }
+    
+    .bank-grid {
+        gap: 30px !important;
+    }
+    
+    .bank-card {
+        width: 40% !important; /* Exibe os logotipos de dois em dois no celular */
+        filter: grayscale(0%) !important;
+        opacity: 1 !important;
+    }
+    
+    .footer-container {
+        flex-direction: column !important;
+        text-align: center !important;
+        gap: 20px !important;
+    }
+    
+    .footer-col {
+        min-width: 100% !important;
+    }
+}
