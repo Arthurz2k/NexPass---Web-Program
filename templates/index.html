@@ -102,6 +102,77 @@
         .footer-col a { color: var(--primary-blue); text-decoration: none; display: block; margin-bottom: 15px; font-weight: 500; }
         .footer-col a:hover { color: var(--white); }
         .footer-bottom { margin-top: 50px; padding-top: 20px; border-top: 1px solid #444; text-align: center; color: #777; font-size: 14px; }
+    /* ==========================================
+           Ajustes de Responsividade para Celular
+           ========================================== */
+        @media (max-width: 768px) {
+            .navbar {
+                flex-direction: column !important;
+                gap: 15px !important;
+                padding: 15px 5% !important;
+                text-align: center !important;
+            }
+            .nav-links {
+                gap: 20px !important;
+            }
+            .nav-actions {
+                flex-direction: column !important;
+                gap: 10px !important;
+                width: 100% !important;
+            }
+            .btn-primary {
+                width: 100% !important;
+                text-align: center !important;
+            }
+            .hero-section {
+                flex-direction: column-reverse !important;
+                padding: 40px 5% !important;
+                text-align: center !important;
+                gap: 30px !important;
+                background-attachment: scroll !important;
+            }
+            .hero-content {
+                max-width: 100% !important;
+            }
+            .hero-content h1 {
+                font-size: 32px !important;
+                margin-bottom: 20px !important;
+            }
+            .floating-icon {
+                width: 160px !important;
+                height: 160px !important;
+            }
+            .section-padding {
+                padding: 50px 5% !important;
+            }
+            .section-title {
+                font-size: 26px !important;
+                margin-bottom: 30px !important;
+            }
+            .solution-card {
+                width: 100% !important;
+            }
+            .bank-section {
+                padding: 50px 5% !important;
+            }
+            .bank-grid {
+                gap: 30px !important;
+            }
+            .bank-card {
+                width: 40% !important;
+                filter: grayscale(0%) !important;
+                opacity: 1 !important;
+            }
+            .footer-container {
+                flex-direction: column !important;
+                text-align: center !important;
+                gap: 20px !important;
+            }
+            .footer-col {
+                min-width: 100% !important;
+            }
+        }
+    
     </style>
 </head>
 <body>
