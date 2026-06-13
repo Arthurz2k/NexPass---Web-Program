@@ -7,6 +7,10 @@ import requests
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
+# Primeiro o app nasce
+app = Flask(__name__)
+
+# configura o cookie
 app.config['SESSION_COOKIE_NAME'] = '__session'
 app.secret_key = 'chave_secreta_nexpass'
 
