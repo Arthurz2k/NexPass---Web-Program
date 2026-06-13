@@ -7,7 +7,7 @@ import requests
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-app = Flask(__name__)
+app.config['SESSION_COOKIE_NAME'] = '__session'
 app.secret_key = 'chave_secreta_nexpass'
 
 # --- CHAVES DE ACESSO DO OPEN FINANCE - API ---

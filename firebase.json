@@ -1,0 +1,19 @@
+{
+  "hosting": {
+    "public": "public_firebase",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "run": {
+          "serviceId": "nexpass-web",
+          "region": "us-central1"
+        }
+      }
+    ]
+  }
+}
