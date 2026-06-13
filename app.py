@@ -1,4 +1,9 @@
 import os
+import time
+from datetime import datetime
+from dotenv import load_dotenv
+load_dotenv()
+
 import csv
 import io
 import re
@@ -21,6 +26,12 @@ app.config['VERSION'] = '1.0.16'
 def inject_version():
     return dict(versao_site=app.config['VERSION'])
 
+@app.template_filter('brl')
+def brl_filter(value):
+    try:
+        return f"{float(value):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    except:
+        return "0,00"
 # --- MODO DE MANUTENÇÃO ---
 MODO_MANUTENCAO = False
 
@@ -83,7 +94,16 @@ def init_db():
     cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='transacoes' AND column_name='cartao_id'")
     if not cur.fetchone():
         cur.execute('ALTER TABLE transacoes ADD COLUMN cartao_id INTEGER REFERENCES cartoes(id)')
-        
+        # Adiciona a coluna tags nas transações (se ainda não existir)
+    cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='transacoes' AND column_name='tags'")
+    if not cur.fetchone():
+        cur.execute('ALTER TABLE transacoes ADD COLUMN tags TEXT')
+
+    # Adiciona a coluna observacao nas transações (se ainda não existir)
+    cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='transacoes' AND column_name='observacao'")
+    if not cur.fetchone():
+        cur.execute('ALTER TABLE transacoes ADD COLUMN observacao TEXT')
+
     conn.commit()
     cur.close()
     conn.close()
@@ -375,6 +395,10 @@ def sincronizar_pluggy():
         item_req = requests.get(f"https://api.pluggy.ai/items/{item_id}", headers=headers)
         nome_banco = item_req.json().get('connector', {}).get('name', 'Pluggy Bank')
 
+        # --- O SEGREDO ESTÁ AQUI ---
+        # Esperamos 3 segundos para dar tempo de a Pluggy gerar o Cartão de Crédito lá nos servidores deles.
+        time.sleep(3)
+
         contas_req = requests.get(f"https://api.pluggy.ai/accounts?itemId={item_id}", headers=headers)
         contas = contas_req.json().get('results', [])
 
@@ -384,21 +408,50 @@ def sincronizar_pluggy():
 
         for conta in contas:
             conta_id = conta['id']
+            tipo_conta = conta.get('type') # 'DEPOSITORY' (Conta) ou 'CREDIT' (Cartão)
+            
+            cartao_db_id = None
+            
+            # SE FOR CARTÃO DE CRÉDITO
+            if tipo_conta == 'CREDIT':
+                nome_cartao = f"{nome_banco} {conta.get('name', 'Cartão')}"
+                credit_data = conta.get('creditData') or {}
+                limite = credit_data.get('creditLimit') or 0
+                
+                cur.execute('SELECT id FROM cartoes WHERE usuario_id = %s AND nome = %s', (session['user_id'], nome_cartao))
+                cartao_existente = cur.fetchone()
+                
+                if cartao_existente:
+                    cartao_db_id = cartao_existente['id']
+                    cur.execute('UPDATE cartoes SET limite = %s WHERE id = %s', (limite, cartao_db_id))
+                else:
+                    cur.execute('''
+                        INSERT INTO cartoes (usuario_id, nome, limite, dia_fechamento, dia_vencimento)
+                        VALUES (%s, %s, %s, %s, %s) RETURNING id
+                    ''', (session['user_id'], nome_cartao, limite, 10, 15))
+                    resultado_insert = cur.fetchone()
+                    if resultado_insert:
+                        cartao_db_id = resultado_insert['id']
+
             transacoes_req = requests.get(f"https://api.pluggy.ai/transactions?accountId={conta_id}", headers=headers)
             transacoes = transacoes_req.json().get('results', [])
 
             for t in transacoes:
                 descricao = t.get('description', 'Transação Automática')
-                valor = abs(t.get('amount', 0))
-                tipo = 'Receita' if t.get('type') == 'CREDIT' else 'Despesa'
                 
-                # NOVO MOTOR DE CATEGORIZAÇÃO APLICADO AQUI
+                # --- LEITURA BLINDADA DE VALORES ---
+                valor_bruto = t.get('amount')
+                if valor_bruto is None: 
+                    valor_bruto = 0.0
+                    
+                valor = abs(valor_bruto)
+                tipo = 'Despesa' if valor_bruto < 0 else 'Receita'
+                # -----------------------------------
+                
                 categoria_original_pluggy = t.get('category', 'Outros')
                 categoria = categorizar_automaticamente(descricao, categoria_original_pluggy)
-                
                 data_transacao = t.get('date', '')[:10]
 
-                # Escudo Anti-Duplicidade do Postgres (%s)
                 cur.execute('''
                     SELECT id FROM transacoes 
                     WHERE usuario_id = %s AND descricao = %s AND valor = %s AND data = %s
@@ -408,9 +461,9 @@ def sincronizar_pluggy():
                     continue 
 
                 cur.execute('''
-                    INSERT INTO transacoes (usuario_id, descricao, valor, tipo, categoria, data, banco)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
-                ''', (session['user_id'], descricao, valor, tipo, categoria, data_transacao, nome_banco))
+                    INSERT INTO transacoes (usuario_id, descricao, valor, tipo, categoria, data, banco, cartao_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                ''', (session['user_id'], descricao, valor, tipo, categoria, data_transacao, nome_banco, cartao_db_id))
                 transacoes_importadas += 1
 
         conn.commit()
@@ -503,6 +556,140 @@ def delete_cartao(id):
     conn.close()
     flash('Cartão excluído com sucesso.', 'success')
     return redirect(url_for('cartoes'))
+
+@app.route('/fatura/<int:cartao_id>')
+def fatura(cartao_id):
+    if 'user_id' not in session: 
+        return redirect(url_for('login'))
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    cur.execute('SELECT * FROM cartoes WHERE id = %s AND usuario_id = %s', (cartao_id, session['user_id']))
+    cartao = cur.fetchone()
+    
+    if not cartao:
+        flash('Cartão não encontrado.', 'error')
+        return redirect(url_for('cartoes'))
+
+    # --- LÓGICA DE NAVEGAÇÃO DE MESES ---
+    hoje = datetime.now()
+    mes_atual = int(request.args.get('mes', hoje.month))
+    ano_atual = int(request.args.get('ano', hoje.year))
+
+    mes_passado = mes_atual - 1 if mes_atual > 1 else 12
+    ano_passado = ano_atual if mes_atual > 1 else ano_atual - 1
+    mes_proximo = mes_atual + 1 if mes_atual < 12 else 1
+    ano_proximo = ano_atual if mes_atual < 12 else ano_atual + 1
+
+    meses_pt = {1: 'Jan', 2: 'Fev', 3: 'Mar', 4: 'Abr', 5: 'Mai', 6: 'Jun', 7: 'Jul', 8: 'Ago', 9: 'Set', 10: 'Out', 11: 'Nov', 12: 'Dez'}
+    nome_mes_atual = f"{meses_pt[mes_atual]} {ano_atual}"
+
+    # --- LÓGICA DOS FILTROS ---
+    busca = request.args.get('busca', '').strip()
+    filtro_tipo = request.args.get('filtro_tipo', 'Todos')
+    filtro_categoria = request.args.get('filtro_categoria', 'Todas')
+    filtro_tag = request.args.get('filtro_tag', 'Todas')
+
+    query = "SELECT * FROM transacoes WHERE cartao_id = %s AND usuario_id = %s"
+    params = [cartao_id, session['user_id']]
+
+    query += " AND data LIKE %s"
+    params.append(f"{ano_atual}-{mes_atual:02d}-%")
+
+    if busca:
+        query += " AND descricao ILIKE %s"
+        params.append(f"%{busca}%")
+    if filtro_tipo != 'Todos':
+        query += " AND LOWER(TRIM(tipo)) = LOWER(%s)"
+        params.append(filtro_tipo)
+    if filtro_categoria != 'Todas':
+        query += " AND categoria = %s"
+        params.append(filtro_categoria)
+    if filtro_tag != 'Todas':
+        query += " AND tags ILIKE %s"
+        params.append(f"%{filtro_tag}%")
+
+    query += " ORDER BY data DESC"
+    cur.execute(query, tuple(params))
+    transacoes = cur.fetchall()
+
+    # Busca Categorias Únicas
+    cur.execute('SELECT DISTINCT categoria FROM transacoes WHERE cartao_id = %s AND usuario_id = %s', (cartao_id, session['user_id']))
+    all_cats = sorted([row['categoria'] for row in cur.fetchall() if row['categoria']])
+
+    # MÁGICA DAS TAGS: Busca e separa todas as tags criadas pelo usuário para popular o filtro dropdown
+    cur.execute("SELECT DISTINCT tags FROM transacoes WHERE cartao_id = %s AND usuario_id = %s AND tags IS NOT NULL AND tags != ''", (cartao_id, session['user_id']))
+    tags_banco = cur.fetchall()
+    lista_tags_unicas = set()
+    for row in tags_banco:
+        for t_item in row['tags'].split(','):
+            if t_item.strip():
+                lista_tags_unicas.add(t_item.strip())
+    all_tags = sorted(list(lista_tags_unicas))
+
+    # Limite total real
+    cur.execute('SELECT valor, tipo FROM transacoes WHERE cartao_id = %s AND usuario_id = %s', (cartao_id, session['user_id']))
+    total_real = 0.0
+    for t in cur.fetchall():
+        tipo = str(t['tipo']).strip().lower()
+        if tipo in ['despesa', 'saída', 'saida']: total_real += float(t['valor'])
+        elif tipo in ['receita', 'entrada']: total_real -= float(t['valor'])
+    limite_disp = float(cartao['limite']) - total_real
+
+    # Total Filtrado na Tela
+    total_fatura = 0.0
+    for t in transacoes:
+        tipo = str(t['tipo']).strip().lower()
+        if tipo in ['despesa', 'saída', 'saida']: total_fatura += float(t['valor'])
+        elif tipo in ['receita', 'entrada']: total_fatura -= float(t['valor'])
+
+    cur.close()
+    conn.close()
+
+    return render_template('fatura.html', cartao=cartao, transacoes=transacoes, 
+                           total_fatura=total_fatura, limite_disp=limite_disp,
+                           busca=busca, filtro_tipo=filtro_tipo, filtro_categoria=filtro_categoria, filtro_tag=filtro_tag,
+                           all_cats=all_cats, all_tags=all_tags,
+                           mes_passado=mes_passado, ano_passado=ano_passado,
+                           mes_proximo=mes_proximo, ano_proximo=ano_proximo,
+                           nome_mes_atual=nome_mes_atual, mes_atual=mes_atual, ano_atual=ano_atual)
+
+@app.route('/salvar_detalhes_transacao', methods=['POST'])
+def salvar_detalhes_transacao():
+    if 'user_id' not in session: return redirect(url_for('login'))
+    t_id = request.form.get('id')
+    cartao_id = request.form.get('cartao_id')
+    descricao = request.form.get('descricao')
+    data = request.form.get('data')
+    categoria = request.form.get('categoria')
+    tags = request.form.get('tags', '').strip()
+    observacao = request.form.get('observacao', '').strip()
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('''
+        UPDATE transacoes 
+        SET descricao = %s, data = %s, categoria = %s, tags = %s, observacao = %s
+        WHERE id = %s AND usuario_id = %s
+    ''', (descricao, data, categoria, tags, observacao, t_id, session['user_id']))
+    conn.commit()
+    cur.close()
+    conn.close()
+    flash('Detalhes da transação atualizados!', 'success')
+    return redirect(url_for('fatura', cartao_id=cartao_id))
+
+@app.route('/delete_transacao_fatura/<int:id>/<int:cartao_id>')
+def delete_transacao_fatura(id, cartao_id):
+    if 'user_id' not in session: return redirect(url_for('login'))
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('DELETE FROM transacoes WHERE id = %s AND usuario_id = %s', (id, session['user_id']))
+    conn.commit()
+    cur.close()
+    conn.close()
+    flash('Transação removida da fatura.', 'success')
+    return redirect(url_for('fatura', cartao_id=cartao_id))
 
 if __name__ == '__main__':
     init_db()

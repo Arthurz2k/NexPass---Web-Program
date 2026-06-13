@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fatura - {{ cartao.nome }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { background: #121212; color: #fff; font-family: 'Montserrat', sans-serif; margin: 0; padding: 0; }
+        .app-container { max-width: 600px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; background: #1a1a1a; }
+        
+        .header { display: flex; align-items: center; justify-content: space-between; padding: 20px; border-bottom: 1px solid #333; }
+        .header h1 { font-size: 18px; margin: 0; font-weight: 600; }
+        .btn-voltar { color: #fff; text-decoration: none; display: flex; align-items: center; gap: 5px; }
+
+        .month-nav { display: flex; justify-content: space-between; align-items: center; padding: 20px; font-size: 14px; color: #888; }
+        .month-active { border: 1px solid #555; padding: 8px 20px; border-radius: 20px; color: #fff; font-weight: 600; }
+
+        .transaction-list { flex: 1; padding: 0 20px; overflow-y: auto; }
+        .transaction-item { display: flex; align-items: center; justify-content: space-between; padding: 15px 0; border-bottom: 1px solid #2a2a2a; cursor: pointer; transition: 0.2s; }
+        .transaction-item:hover { background: rgba(255,255,255,0.02); }
+        .transaction-left { display: flex; align-items: center; gap: 15px; }
+        .icon-circle { width: 40px; height: 40px; border-radius: 50%; background: #333; display: flex; align-items: center; justify-content: center; }
+        .t-desc { font-weight: 600; font-size: 15px; margin-bottom: 3px; display: block; text-transform: uppercase; }
+        .t-cat { font-size: 12px; color: #888; }
+        .transaction-right { text-align: right; }
+        .t-valor { font-size: 15px; font-weight: 600; display: block; }
+        .t-status { font-size: 12px; color: #888; }
+
+        .summary-footer { background: #121212; padding: 20px; border-top: 1px solid #333; display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; gap: 10px; }
+        .summary-box { display: flex; flex-direction: column; gap: 5px; }
+        .s-valor { font-size: 16px; font-weight: 800; }
+        .s-label { font-size: 11px; color: #888; text-transform: uppercase; }
+        
+        .text-green { color: #4CAF50; }
+        .text-red { color: #F44336; }
+        .text-blue { color: #2196F3; }
+        .text-white { color: #ffffff; }
+
+        /* Modais Modernos Dark Mode */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); align-items: center; justify-content: center; }
+        .modal-content { background: #1e1e1e; padding: 30px; border-radius: 24px; width: 90%; max-width: 380px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); border: 1px solid #333; position: relative; }
+        .modal-input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 10px; border: 1px solid #444; background: #2a2a2a; color: white; font-family: inherit; box-sizing: border-box; font-size: 14px; }
+        .modal-input:focus { outline: none; border-color: #007BFF; }
+        .btn-modal { flex: 1; padding: 12px; border-radius: 10px; border: none; font-weight: 700; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; gap: 5px; }
+
+        /* Estilos do Bottom Sheet / Detalhes (Baseado no screenshot) */
+        .sheet-icon-main { width: 60px; height: 60px; border-radius: 50%; background: #3f51b5; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px auto; box-shadow: 0 0 20px rgba(63, 81, 181, 0.4); }
+        .sheet-badge { background: #223a2f; color: #4CAF50; padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; margin-bottom: 25px; }
+        .action-row-buttons { display: flex; justify-content: center; gap: 15px; margin-bottom: 30px; border-bottom: 1px solid #333; padding-bottom: 20px; }
+        .circle-action-btn { width: 45px; height: 45px; border-radius: 50%; background: #2a2a2a; border: 1px solid #444; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; text-decoration: none; }
+        .circle-action-btn:hover { background: #333; transform: scale(1.05); }
+        
+        .detail-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #252525; font-size: 14px; }
+        .detail-label { color: #888; }
+        .detail-value-input { background: transparent; border: none; color: white; text-align: right; font-family: inherit; font-size: 14px; width: 60%; }
+        .detail-value-input:focus { outline: none; border-bottom: 1px dashed #007BFF; color: #007BFF; }
+        .detail-value-link { color: #4CAF50; text-decoration: none; font-weight: 600; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="header">
+        <a href="/cartoes" class="btn-voltar"><i data-lucide="chevron-left"></i></a>
+        <h1>Fatura {{ cartao.nome }}</h1>
+        <i data-lucide="more-vertical" onclick="openModal('modalFiltros')" style="cursor: pointer; color: #007BFF;"></i>
+    </div>
+
+    <div class="month-nav">
+        <a href="/fatura/{{ cartao.id }}?mes={{ mes_passado }}&ano={{ ano_passado }}&busca={{ busca }}&filtro_tipo={{ filtro_tipo }}&filtro_categoria={{ filtro_categoria }}&filtro_tag={{ filtro_tag }}" style="color: #888; text-decoration: none; display: flex; align-items: center; gap: 5px;">
+            <i data-lucide="chevron-left" size="18"></i> Ant
+        </a>
+        <div class="month-active" style="text-transform: uppercase;">{{ nome_mes_atual }}</div>
+        <a href="/fatura/{{ cartao.id }}?mes={{ mes_proximo }}&ano={{ ano_proximo }}&busca={{ busca }}&filtro_tipo={{ filtro_tipo }}&filtro_categoria={{ filtro_categoria }}&filtro_tag={{ filtro_tag }}" style="color: #888; text-decoration: none; display: flex; align-items: center; gap: 5px;">
+            Próx <i data-lucide="chevron-right" size="18"></i>
+        </a>
+    </div>
+
+    {% if busca or filtro_tipo != 'Todos' or filtro_categoria != 'Todas' or filtro_tag != 'Todas' %}
+    <div style="background: #2a2a2a; padding: 10px 20px; font-size: 12px; display: flex; justify-content: space-between; align-items: center;">
+        <span style="color: #aaa;">Filtros aplicados.</span>
+        <a href="/fatura/{{ cartao.id }}" style="color: #F44336; text-decoration: none; font-weight: bold;">Limpar</a>
+    </div>
+    {% endif %}
+
+    <div class="transaction-list">
+        {% for t in transacoes %}
+        <div class="transaction-item" onclick="verDetalhes('{{ t.id }}', '{{ t.descricao }}', '{{ t.valor|brl }}', '{{ t.tipo }}', '{{ t.data }}', '{{ t.categoria }}', '{{ t.tags or '' }}', '{{ t.observacao or '' }}')">
+            <div class="transaction-left">
+                <div class="icon-circle"><i data-lucide="file-text" size="18" color="#aaa"></i></div>
+                <div>
+                    <span class="t-desc">{{ t.descricao }}</span>
+                    <span class="t-cat">{{ t.data }} • {{ t.categoria }}</span>
+                </div>
+            </div>
+            <div class="transaction-right">
+                <span class="t-valor {% if t.tipo == 'Despesa' %}text-white{% else %}text-green{% endif %}">
+                    {% if t.tipo == 'Despesa' %}-{% else %}+{% endif %}R$ {{ t.valor | brl }}
+                </span>
+                <span class="t-status">lançado</span>
+            </div>
+        </div>
+        {% else %}
+        <div style="text-align: center; color: #666; margin-top: 40px;">
+            <i data-lucide="search" size="48" style="margin-bottom: 10px; opacity: 0.5;"></i>
+            <p>Nenhuma transação encontrada.</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="summary-footer">
+        <div class="summary-box">
+            <span class="s-valor text-green">R$ 0,00</span>
+            <span class="s-label">Pago</span>
+        </div>
+        <div class="summary-box">
+            <span class="s-valor text-red">-R$ {{ total_fatura | brl }}</span>
+            <span class="s-label">Gasto na Tela</span>
+        </div>
+        <div class="summary-box">
+            <span class="s-valor text-blue">R$ {{ limite_disp | brl }}</span>
+            <span class="s-label">Limite Disp.</span>
+        </div>
+    </div>
+</div>
+
+<div id="modalFiltros" class="modal">
+    <div class="modal-content">
+        <h3 style="margin-top: 0; text-align: center;">Buscar Transação</h3>
+        <form method="GET" action="/fatura/{{ cartao.id }}">
+            <label style="font-size: 11px; color: #888; font-weight: 600; margin-bottom: 5px; display: block;">PESQUISAR</label>
+            <input type="text" name="busca" class="modal-input" placeholder="Ex: Ifood, Uber..." value="{{ busca }}">
+            
+            <label style="font-size: 11px; color: #888; font-weight: 600; margin-bottom: 5px; display: block;">TIPO</label>
+            <select name="filtro_tipo" class="modal-input">
+                <option value="Todos" {% if filtro_tipo == 'Todos' %}selected{% endif %}>Todos os Tipos</option>
+                <option value="Despesa" {% if filtro_tipo == 'Despesa' %}selected{% endif %}>Despesas (Gastos)</option>
+                <option value="Receita" {% if filtro_tipo == 'Receita' %}selected{% endif %}>Receitas (Pagamentos)</option>
+            </select>
+
+            <label style="font-size: 11px; color: #888; font-weight: 600; margin-bottom: 5px; display: block;">CATEGORIA</label>
+            <select name="filtro_categoria" class="modal-input">
+                <option value="Todas" {% if filtro_categoria == 'Todas' %}selected{% endif %}>Todas as Categorias</option>
+                {% for c in all_cats %}
+                    <option value="{{ c }}" {% if filtro_categoria == c %}selected{% endif %}>{{ c }}</option>
+                {% endfor %}
+            </select>
+
+            <label style="font-size: 11px; color: #888; font-weight: 600; margin-bottom: 5px; display: block;">FILTRAR POR TAG</label>
+            <select name="filtro_tag" class="modal-input">
+                <option value="Todas" {% if filtro_tag == 'Todas' %}selected{% endif %}>Todas as Tags</option>
+                {% for t in all_tags %}
+                    <option value="{{ t }}" {% if filtro_tag == t %}selected{% endif %}>{{ t }}</option>
+                {% endfor %}
+            </select>
+
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button type="button" onclick="closeModal('modalFiltros')" class="btn-modal" style="background: #333;">Cancelar</button>
+                <button type="submit" class="btn-modal" style="background: #007BFF;">Filtrar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="modalDetalhesTransacao" class="modal">
+    <div class="modal-content" style="max-width: 420px; padding-top: 20px;">
+        <div style="width: 40px; height: 4px; background: #444; border-radius: 2px; margin: 0 auto 20px auto;"></div>
+        
+        <div class="sheet-icon-main">
+            <i data-lucide="credit-card" color="#fff" size="28"></i>
+        </div>
+
+        <div style="text-align: center;">
+            <h2 id="detalhe_titulo_header" style="margin: 0 0 5px 0; font-weight: 800; font-size: 20px; text-transform: uppercase;">-</h2>
+            <div id="detalhe_valor_header" style="font-size: 26px; font-weight: 800; margin-bottom: 10px;">-</div>
+            
+            <div class="sheet-badge">
+                <i data-lucide="refresh-cw" size="14"></i> Lançamento fixo
+            </div>
+        </div>
+
+        <div class="action-row-buttons">
+            <a id="btn_excluir_detalhe" href="#" class="circle-action-btn" title="Apagar" onclick="return confirm('Deseja realmente apagar este lançamento?')">
+                <i data-lucide="trash-2" size="20" color="#ff4d4d"></i>
+            </a>
+            <button class="circle-action-btn" title="Copiar" onclick="copiarDescricao()">
+                <i data-lucide="copy" size="20"></i>
+            </button>
+            <button class="circle-action-btn" title="Dar ciência" onclick="alert('Ciência registrada!')">
+                <i data-lucide="thumbs-up" size="20" color="#4CAF50"></i>
+            </button>
+            <button class="circle-action-btn" title="Salvar Alterações" onclick="document.getElementById('form_salvar_detalhes').submit()">
+                <i data-lucide="check" size="20" color="#007BFF"></i>
+            </button>
+        </div>
+
+        <form id="form_salvar_detalhes" method="POST" action="/salvar_detalhes_transacao">
+            <input type="hidden" name="id" id="input_id">
+            <input type="hidden" name="cartao_id" value="{{ cartao.id }}">
+
+            <div class="detail-row">
+                <span class="detail-label">Descrição</span>
+                <input type="text" name="descricao" id="input_descricao" class="detail-value-input" required>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Data</span>
+                <input type="text" name="data" id="input_data" class="detail-value-input" required placeholder="AAAA-MM-DD">
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Cartão</span>
+                <span style="color: #aaa; font-weight: 600;">{{ cartao.nome }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Categoria</span>
+                <input type="text" name="categoria" id="input_categoria" class="detail-value-input" required>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Tags</span>
+                <input type="text" name="tags" id="input_tags" class="detail-value-input" placeholder="Toque para adicionar">
+            </div>
+            <div class="detail-row" style="border: none;">
+                <span class="detail-label">Observação</span>
+                <input type="text" name="observacao" id="input_observacao" class="detail-value-input" placeholder="Toque para adicionar">
+            </div>
+            <div class="detail-row" style="border: none; padding-top: 0;">
+                <span class="detail-label">Anexos</span>
+                <span class="detail-value-link">Adicionar</span>
+            </div>
+        </form>
+
+        <button type="button" onclick="closeModal('modalDetalhesTransacao')" class="btn-modal" style="background: #2a2a2a; margin-top: 20px; width: 100%;">Fechar</button>
+    </div>
+</div>
+
+<script>
+    lucide.createIcons();
+    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    // Alimenta o modal dinamicamente ao clicar na linha da transação
+    function verDetalhes(id, descricao, valorFormatted, tipo, data, categoria, tags, observacao) {
+        document.getElementById('input_id').value = id;
+        document.getElementById('detalhe_titulo_header').innerText = descricao;
+        
+        let sinal = (tipo === 'Despesa') ? '-' : '+';
+        document.getElementById('detalhe_valor_header').innerText = sinal + 'R$ ' + valorFormatted;
+        document.getElementById('detalhe_valor_header').className = (tipo === 'Despesa') ? 'text-red' : 'text-green';
+
+        document.getElementById('input_descricao').value = descricao;
+        document.getElementById('input_data').value = data;
+        document.getElementById('input_categoria').value = categoria;
+        document.getElementById('input_tags').value = tags;
+        document.getElementById('input_observacao').value = observacao;
+
+        // Configura o botão de exclusão rápida
+        document.getElementById('btn_excluir_detalhe').href = '/delete_transacao_fatura/' + id + '/{{ cartao.id }}';
+
+        openModal('modalDetalhesTransacao');
+    }
+
+    function copiarDescricao() {
+        let desc = document.getElementById('input_descricao').value;
+        navigator.clipboard.writeText(desc);
+        alert('Descrição copiada para a área de transferência!');
+    }
+</script>
+</body>
+</html>

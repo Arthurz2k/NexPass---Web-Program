@@ -84,13 +84,20 @@
         <h2 class="section-title">Meus Cartões de Crédito</h2>
         <div class="grid-bancos">
             {% for cartao in cartoes %}
-            <div class="cc-card">
+            <div class="cc-card" onclick="if(event.target.closest('.btn-excluir-cc')) return; window.location.href='/fatura/{{ cartao.id }}'" style="cursor: pointer;">
                 <a href="/delete_cartao/{{ cartao.id }}" class="btn-excluir-cc" onclick="return confirm('Deseja realmente excluir este cartão?')" title="Excluir Cartão">
                     <i data-lucide="trash-2" size="18"></i>
                 </a>
                 
                 <div class="cc-header">
-                    <div class="cc-chip"></div>
+                    <div class="cc-chip fallback-chip" style="display: none;"></div>
+
+                    <img src="{{ url_for('static', filename='img/' + cartao.nome|lower|replace(' ', '') + '.png') }}" 
+                         alt="{{ cartao.nome }}" 
+                         style="height: 35px; max-width: 80px; object-fit: contain; background: white; padding: 5px; border-radius: 8px;"
+                         onload="this.previousElementSibling.style.display='none';"
+                         onerror="this.style.display='none'; this.previousElementSibling.style.display='block';">
+     
                     <i data-lucide="credit-card" style="color: rgba(255,255,255,0.1); width: 45px; height: 45px; position: absolute; right: 25px; bottom: 85px;"></i>
                 </div>
                 
@@ -98,7 +105,7 @@
                 
                 <div class="cc-limite">
                     Limite Total
-                    <strong>R$ {{ "%.2f"|format(cartao.limite) }}</strong>
+                    <strong>R$ {{ cartao.limite | brl }}</strong>
                 </div>
                 
                 <div class="cc-datas">
@@ -123,17 +130,17 @@
                 
                 <div>
                     <span class="valor-titulo">Saldo Atual</span>
-                    <div class="saldo-destaque">R$ {{ "%.2f"|format(banco.saldo) }}</div>
+                    <div class="saldo-destaque">R$ {{ banco.saldo | brl }}</div>
                 </div>
 
                 <div class="banco-valores">
                     <div class="valor-item">
                         <span class="valor-titulo">Entradas</span>
-                        <span class="valor-numero" style="color: #28a745;">+ R$ {{ "%.2f"|format(banco.receitas) }}</span>
+                        <span class="valor-numero" style="color: #28a745;">+ R$ {{ banco.receitas | brl }}</span>
                     </div>
                     <div class="valor-item" style="text-align: right;">
                         <span class="valor-titulo">Saídas</span>
-                        <span class="valor-numero" style="color: #dc3545;">- R$ {{ "%.2f"|format(banco.despesas) }}</span>
+                        <span class="valor-numero" style="color: #dc3545;">- R$ {{ banco.despesas | brl }}</span>
                     </div>
                 </div>
             </div>
