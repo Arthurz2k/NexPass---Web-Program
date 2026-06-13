@@ -70,6 +70,36 @@ def init_db():
     cur.close()
     conn.close()
 
+# --- MOTOR INTELIGENTE DE CATEGORIZAÇÃO ---
+def categorizar_automaticamente(descricao, categoria_pluggy='Outros'):
+    desc = str(descricao).lower()
+    
+    # Dicionário inteligente (Você pode adicionar mais palavras aqui depois!)
+    dicionario = {
+        'Alimentação': ['ifood', 'rappi', 'mcdonalds', 'burger king', 'bk', 'mercado', 'supermercado', 'atacadao', 'carrefour', 'padaria', 'restaurante', 'pizzaria', 'assai', 'zaffari', 'ze delivery'],
+        'Transporte': ['uber', '99', 'posto', 'ipiranga', 'shell', 'petrobras', 'estacionamento', 'pedagio', 'sem parar', 'veloe', 'metro', 'cptm', 'passagem'],
+        'Moradia': ['enel', 'sabesp', 'copel', 'cemig', 'light', 'condominio', 'aluguel', 'iptu', 'internet', 'vivo', 'claro', 'tim'],
+        'Saúde': ['farmacia', 'drogasil', 'raia', 'pague menos', 'unimed', 'amil', 'sulamerica', 'hospital', 'clinica'],
+        'Lazer': ['netflix', 'spotify', 'amazon', 'prime', 'hbo', 'cinema', 'ingresso', 'steam', 'playstation', 'xbox', 'sympla'],
+        'Salário': ['salario', 'adiantamento', 'pagamento', 'honorarios', 'pix recebido']
+    }
+
+    # 1. Procura palavras-chave na descrição da compra
+    for categoria, palavras in dicionario.items():
+        if any(palavra in desc for palavra in palavras):
+            return categoria
+            
+    # 2. Se não achar na descrição, tenta traduzir o padrão da Pluggy
+    traducoes_pluggy = {
+        'Food and Drink': 'Alimentação',
+        'Travel': 'Transporte',
+        'Health': 'Saúde',
+        'Payment': 'Outros'
+    }
+    
+    return traducoes_pluggy.get(categoria_pluggy, 'Outros')
+# ------------------------------------------
+
 @app.route('/')
 def home():
     return render_template('index.html')
@@ -343,7 +373,11 @@ def sincronizar_pluggy():
                 descricao = t.get('description', 'Transação Automática')
                 valor = abs(t.get('amount', 0))
                 tipo = 'Receita' if t.get('type') == 'CREDIT' else 'Despesa'
-                categoria = t.get('category', 'Outros')
+                
+                # NOVO MOTOR DE CATEGORIZAÇÃO APLICADO AQUI
+                categoria_original_pluggy = t.get('category', 'Outros')
+                categoria = categorizar_automaticamente(descricao, categoria_original_pluggy)
+                
                 data_transacao = t.get('date', '')[:10]
 
                 # Escudo Anti-Duplicidade do Postgres (%s)
