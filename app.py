@@ -15,7 +15,7 @@ app.config['SESSION_COOKIE_NAME'] = '__session'
 app.secret_key = os.environ.get('SECRET_KEY')
 
 # Configuração da versão atual
-app.config['VERSION'] = '1.0.0'
+app.config['VERSION'] = '1.0.16'
 
 @app.context_processor
 def inject_version():
@@ -66,6 +66,24 @@ def init_db():
             banco TEXT DEFAULT 'Manual'
         )
     ''')
+    
+    # --- NOVA TABELA DE CARTÕES ---
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS cartoes (
+            id SERIAL PRIMARY KEY,
+            usuario_id INTEGER REFERENCES usuarios(id),
+            nome TEXT,
+            limite REAL,
+            dia_fechamento INTEGER,
+            dia_vencimento INTEGER
+        )
+    ''')
+    
+    # Adiciona a coluna cartao_id nas transações (se ainda não existir)
+    cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='transacoes' AND column_name='cartao_id'")
+    if not cur.fetchone():
+        cur.execute('ALTER TABLE transacoes ADD COLUMN cartao_id INTEGER REFERENCES cartoes(id)')
+        
     conn.commit()
     cur.close()
     conn.close()
@@ -420,6 +438,7 @@ def cartoes():
     cur.execute('SELECT * FROM usuarios WHERE id = %s', (user_id,))
     info = cur.fetchone()
 
+    # Bancos Conectados (Mantém a sua lógica original)
     cur.execute('''
         SELECT 
             banco,
@@ -431,6 +450,10 @@ def cartoes():
     ''', (user_id,))
     bancos_db = cur.fetchall()
 
+    # Busca os cartões cadastrados pelo usuário
+    cur.execute('SELECT * FROM cartoes WHERE usuario_id = %s ORDER BY id DESC', (user_id,))
+    meus_cartoes = cur.fetchall()
+
     cur.close()
     conn.close()
 
@@ -440,18 +463,46 @@ def cartoes():
         rec = float(b['receitas'] or 0)
         des = float(b['despesas'] or 0)
         saldo = rec - des
-        
         nome_imagem = nome_banco.lower().replace(' ', '_') + '.png'
+        lista_bancos.append({'nome': nome_banco, 'saldo': saldo, 'receitas': rec, 'despesas': des, 'imagem': nome_imagem})
 
-        lista_bancos.append({
-            'nome': nome_banco,
-            'saldo': saldo,
-            'receitas': rec,
-            'despesas': des,
-            'imagem': nome_imagem
-        })
+    # Enviando a variável "cartoes" para o HTML
+    return render_template('cartoes.html', info=info, bancos=lista_bancos, cartoes=meus_cartoes)
 
-    return render_template('cartoes.html', info=info, bancos=lista_bancos)
+@app.route('/add_cartao', methods=['POST'])
+def add_cartao():
+    if 'user_id' in session:
+        nome = request.form['nome']
+        limite = float(request.form['limite'])
+        dia_fechamento = int(request.form['dia_fechamento'])
+        dia_vencimento = int(request.form['dia_vencimento'])
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            INSERT INTO cartoes (usuario_id, nome, limite, dia_fechamento, dia_vencimento)
+            VALUES (%s, %s, %s, %s, %s)
+        ''', (session['user_id'], nome, limite, dia_fechamento, dia_vencimento))
+        conn.commit()
+        cur.close()
+        conn.close()
+        flash('Cartão adicionado com sucesso!', 'success')
+    return redirect(url_for('cartoes'))
+
+@app.route('/delete_cartao/<int:id>')
+def delete_cartao(id):
+    if 'user_id' not in session: return redirect(url_for('login'))
+    conn = get_db_connection()
+    cur = conn.cursor()
+    # Desvincula as transações deste cartão antes de excluir para não quebrar o banco
+    cur.execute('UPDATE transacoes SET cartao_id = NULL WHERE cartao_id = %s AND usuario_id = %s', (id, session['user_id']))
+    # Exclui o cartão
+    cur.execute('DELETE FROM cartoes WHERE id = %s AND usuario_id = %s', (id, session['user_id']))
+    conn.commit()
+    cur.close()
+    conn.close()
+    flash('Cartão excluído com sucesso.', 'success')
+    return redirect(url_for('cartoes'))
 
 if __name__ == '__main__':
     init_db()
