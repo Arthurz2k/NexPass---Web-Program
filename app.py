@@ -12,7 +12,7 @@ app = Flask(__name__)
 
 # configura o cookie
 app.config['SESSION_COOKIE_NAME'] = '__session'
-app.secret_key = 'chave_secreta_nexpass'
+app.secret_key = os.environ.get('SECRET_KEY')
 
 # Configuração da versão atual
 app.config['VERSION'] = '1.0.0'
@@ -31,11 +31,11 @@ def verificar_manutencao():
         return render_template('manutencao.html'), 503
 
 # --- CHAVES DE ACESSO DO OPEN FINANCE - API ---
-PLUGGY_CLIENT_ID = 'ee3eb89c-02c1-4099-b786-dd0d4c1fcf71'
-PLUGGY_CLIENT_SECRET = 'dfc086ab-2d06-4441-8517-7871fe3293e0'
+PLUGGY_CLIENT_ID = os.environ.get('PLUGGY_CLIENT_ID')
+PLUGGY_CLIENT_SECRET = os.environ.get('PLUGGY_CLIENT_SECRET')
 
 # --- CHAVE DO BANCO DE DADOS NA NUVEM (NEON/POSTGRESQL) ---
-DATABASE_URL = "postgresql://neondb_owner:npg_6EdTfvkQia7r@ep-summer-dream-acyizfpg.sa-east-1.aws.neon.tech/neondb?sslmode=require"
+DATABASE_URL = os.environ.get('DATABASE_URL')
 
 def format_brl(value):
     return f"R$ {value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
