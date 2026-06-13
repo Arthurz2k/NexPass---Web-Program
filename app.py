@@ -22,7 +22,7 @@ def inject_version():
     return dict(versao_site=app.config['VERSION'])
 
 # --- MODO DE MANUTENÇÃO ---
-MODO_MANUTENCAO = True
+MODO_MANUTENCAO = False
 
 @app.before_request
 def verificar_manutencao():
