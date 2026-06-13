@@ -21,6 +21,15 @@ app.config['VERSION'] = '1.0.0'
 def inject_version():
     return dict(versao_site=app.config['VERSION'])
 
+# --- MODO DE MANUTENÇÃO ---
+MODO_MANUTENCAO = True
+
+@app.before_request
+def verificar_manutencao():
+    if MODO_MANUTENCAO and request.endpoint != 'static':
+        from flask import render_template
+        return render_template('manutencao.html'), 503
+
 # --- CHAVES DE ACESSO DO OPEN FINANCE - API ---
 PLUGGY_CLIENT_ID = 'ee3eb89c-02c1-4099-b786-dd0d4c1fcf71'
 PLUGGY_CLIENT_SECRET = 'dfc086ab-2d06-4441-8517-7871fe3293e0'
