@@ -14,6 +14,13 @@ app = Flask(__name__)
 app.config['SESSION_COOKIE_NAME'] = '__session'
 app.secret_key = 'chave_secreta_nexpass'
 
+# Configuração da versão atual
+app.config['VERSION'] = '1.0.0'
+
+@app.context_processor
+def inject_version():
+    return dict(versao_site=app.config['VERSION'])
+
 # --- CHAVES DE ACESSO DO OPEN FINANCE - API ---
 PLUGGY_CLIENT_ID = 'ee3eb89c-02c1-4099-b786-dd0d4c1fcf71'
 PLUGGY_CLIENT_SECRET = 'dfc086ab-2d06-4441-8517-7871fe3293e0'

@@ -177,6 +177,23 @@
 </head>
 <body>
 
+    <div id="loading-screen" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #f4f6f9; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+    <h2 style="color: #007bff; font-family: sans-serif;">NEXPASS</h2>
+    <p style="color: #6c757d; font-family: sans-serif;">Carregando atualizações...</p>
+</div>
+
+<script>
+    window.addEventListener('load', function() {
+        const loadingScreen = document.getElementById('loading-screen');
+        // Adiciona um pequeno atraso (opcional) para transição suave
+        setTimeout(() => {
+            loadingScreen.style.opacity = '0';
+            loadingScreen.style.transition = 'opacity 0.5s ease';
+            setTimeout(() => loadingScreen.style.display = 'none', 500);
+        }, 300);
+    });
+</script>
+
     <header class="navbar">
         <div class="logo">
             <img src="{{ url_for('static', filename='img/logo.png') }}" alt="NEXPASS Logo" style="height: 65px; object-fit: contain;">
@@ -266,7 +283,7 @@
             </div>
         </div>
         <div class="footer-bottom">
-            &copy; 2026 NEXPASS - Todos os direitos reservados.
+    &copy; 2026 NEXPASS - Todos os direitos reservados. | Versão {{ versao_site }}
         </div>
     </footer>
 
