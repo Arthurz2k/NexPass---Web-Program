@@ -2,6 +2,7 @@ import os
 import time
 from datetime import datetime
 from dotenv import load_dotenv
+import unicodedata
 load_dotenv()
 
 import csv
@@ -99,40 +100,117 @@ def init_db():
     if not cur.fetchone():
         cur.execute('ALTER TABLE transacoes ADD COLUMN tags TEXT')
 
-    # Adiciona a coluna observacao nas transações (se ainda não existir)
+   # Adiciona a coluna observacao nas transações (se ainda não existir)
     cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='transacoes' AND column_name='observacao'")
     if not cur.fetchone():
         cur.execute('ALTER TABLE transacoes ADD COLUMN observacao TEXT')
+
+    # --- COLE ESTE BLOCO AQUI: NOVA TABELA DE METAS E LIMITES ---
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS metas (
+            id SERIAL PRIMARY KEY,
+            usuario_id INTEGER REFERENCES usuarios(id),
+            categoria TEXT,
+            limite REAL,
+            mes INTEGER,
+            ano INTEGER,
+            UNIQUE(usuario_id, categoria, mes, ano)
+        )
+    ''')
+    # ------------------------------------------------------------
 
     conn.commit()
     cur.close()
     conn.close()
 
-# --- MOTOR INTELIGENTE DE CATEGORIZAÇÃO ---
+# --- MOTOR INTELIGENTE DE CATEGORIZAÇÃO (V2.0) ---
 def categorizar_automaticamente(descricao, categoria_pluggy='Outros'):
+    # 1. Normaliza a string (Tudo minúsculo e sem acentos)
     desc = str(descricao).lower()
+    try:
+        desc = ''.join(c for c in unicodedata.normalize('NFD', desc) if unicodedata.category(c) != 'Mn')
+    except:
+        pass 
     
-    # Dicionário inteligente (Você pode adicionar mais palavras aqui depois!)
+    # 2. Limpeza de intermediários de pagamento comuns no Brasil
+    # Remove prefixos como "mp *", "pg*ton", "zp*" para o código ler apenas o nome da loja
+    prefixos_limpar = ['mp*', 'mp *', 'pg*', 'pg *', 'pg*ton ', 'zp*', 'zp *', 'payu*', 'pag*']
+    for prefixo in prefixos_limpar:
+        if desc.startswith(prefixo):
+            desc = desc.replace(prefixo, '', 1).strip()
+
+    # 3. Mega Dicionário de Palavras-chave Brasileiras
     dicionario = {
-        'Alimentação': ['ifood', 'rappi', 'mcdonalds', 'burger king', 'bk', 'mercado', 'supermercado', 'atacadao', 'carrefour', 'padaria', 'restaurante', 'pizzaria', 'assai', 'zaffari', 'ze delivery'],
-        'Transporte': ['uber', '99', 'posto', 'ipiranga', 'shell', 'petrobras', 'estacionamento', 'pedagio', 'sem parar', 'veloe', 'metro', 'cptm', 'passagem'],
-        'Moradia': ['enel', 'sabesp', 'copel', 'cemig', 'light', 'condominio', 'aluguel', 'iptu', 'internet', 'vivo', 'claro', 'tim'],
-        'Saúde': ['farmacia', 'drogasil', 'raia', 'pague menos', 'unimed', 'amil', 'sulamerica', 'hospital', 'clinica'],
-        'Lazer': ['netflix', 'spotify', 'amazon', 'prime', 'hbo', 'cinema', 'ingresso', 'steam', 'playstation', 'xbox', 'sympla'],
-        'Salário': ['salario', 'adiantamento', 'pagamento', 'honorarios', 'pix recebido']
+        'Alimentação': [
+            'ifood', 'rappi', 'mcdonalds', 'burger king', 'bk', 'mercado', 'supermercado', 
+            'atacadao', 'carrefour', 'padaria', 'restaurante', 'pizzaria', 'assai', 
+            'zaffari', 'ze delivery', 'outback', 'habibs', 'coco bambu', 'pao de acucar', 
+            'extra', 'hortifruti', 'swift', 'ambev', 'cacau show', 'kfc', 'subway', 'bar ', 
+            'botequim', 'cafe', 'lanchonete', 'confeitaria', 'sorveteria', 'doceria'
+        ],
+        'Transporte': [
+            'uber', '99', '99app', 'posto', 'ipiranga', 'shell', 'petrobras', 'ale', 'estacionamento', 
+            'pedagio', 'sem parar', 'veloe', 'conectcar', 'metro', 'cptm', 'passagem', 
+            'latam', 'gol', 'azul', 'decolar', '123milhas', 'localiza', 'movida', 'unidas', 
+            'bilhete unico', 'clickbus', 'buser', 'viacao', 'balsa'
+        ],
+        'Moradia': [
+            'enel', 'sabesp', 'copel', 'cemig', 'light', 'sanepar', 'compesa', 'ceb', 
+            'caesb', 'condominio', 'aluguel', 'iptu', 'internet', 'vivo', 'claro', 'tim', 
+            'oi', 'net ', 'sky', 'leroy merlin', 'telhanorte', 'c&c', 'tok stok', 'mobly', 'imobiliaria'
+        ],
+        'Saúde': [
+            'farmacia', 'drogasil', 'raia', 'pague menos', 'pacheco', 'sao paulo', 'unimed', 
+            'amil', 'sulamerica', 'bradesco saude', 'hapvida', 'hospital', 'clinica', 
+            'odontoprev', 'sorridentes', 'exame', 'laboratorio', 'fleury', 'sabin', 'terapia', 'psicologo'
+        ],
+        'Lazer e Assinaturas': [
+            'netflix', 'spotify', 'amazon prime', 'prime video', 'hbo', 'disney', 'star+', 'globoplay', 
+            'cinema', 'ingresso', 'cinemark', 'cinepolis', 'kinoplex', 'sympla', 'eventim', 
+            'steam', 'playstation', 'xbox', 'nintendo', 'itunes', 'google play', 'tinder', 
+            'deezer', 'twitch', 'apple.com/bill', 'riot games', 'smart fit', 'smartfit', 'academia'
+        ],
+        'Educação': [
+            'escola', 'faculdade', 'universidade', 'curso', 'alura', 'udemy', 'ingles', 'idiomas', 
+            'estacio', 'anhanguera', 'puc', 'mackenzie', 'fgv', 'livraria', 'saraiva', 'leitura'
+        ],
+        'Compras e Lojas': [
+            'amazon', 'mercadolivre', 'mercado livre', 'shopee', 'shein', 'aliexpress', 
+            'renner', 'riachuelo', 'c&a', 'cea', 'zara', 'centauro', 'netshoes', 'dafiti', 
+            'magalu', 'casas bahia', 'ponto frio', 'americanas', 'havan', 'boticario', 'natura', 'sephora',
+            'privalia'
+        ],
+        'Pets': [
+            'cobasi', 'petz', 'pet shop', 'veterinario', 'racao'
+        ],
+        'Taxas e Serviços': [
+            'tarifa', 'anuidade', 'iof', 'juros', 'multa', 'seguro', 'correios', 'loggi', 
+            'mensalidade', 'cartorio', 'despachante', 'hotmart'
+        ],
+        'Salário e Receitas': [
+            'salario', 'adiantamento', 'pagamento', 'honorarios', 'pix recebido', 'ted recebida', 
+            'doc recebido', 'rendimento', 'proventos', 'reembolso', 'restituicao', 'cashback'
+        ]
     }
 
-    # 1. Procura palavras-chave na descrição da compra
+    # 4. Procura palavras-chave na descrição limpa
     for categoria, palavras in dicionario.items():
         if any(palavra in desc for palavra in palavras):
             return categoria
             
-    # 2. Se não achar na descrição, tenta traduzir o padrão da Pluggy
+    # 5. Captura Transferências via PIX genéricas
+    if 'pix' in desc:
+        return 'Transferência'
+
+    # 6. Fallback - Tenta traduzir o padrão original da Pluggy
     traducoes_pluggy = {
         'Food and Drink': 'Alimentação',
         'Travel': 'Transporte',
         'Health': 'Saúde',
-        'Payment': 'Outros'
+        'Payment': 'Outros',
+        'Transfers': 'Transferência',
+        'Shopping': 'Compras e Lojas',
+        'Personal Care': 'Saúde'
     }
     
     return traducoes_pluggy.get(categoria_pluggy, 'Outros')
@@ -690,6 +768,178 @@ def delete_transacao_fatura(id, cartao_id):
     conn.close()
     flash('Transação removida da fatura.', 'success')
     return redirect(url_for('fatura', cartao_id=cartao_id))
+
+@app.route('/metas')
+def metas():
+    if 'user_id' not in session: return redirect(url_for('login'))
+    user_id = session['user_id']
+    hoje = datetime.now()
+    mes_atual = int(request.args.get('mes', hoje.month))
+    ano_atual = int(request.args.get('ano', hoje.year))
+    
+    mes_passado = mes_atual - 1 if mes_atual > 1 else 12
+    ano_passado = ano_atual if mes_atual > 1 else ano_atual - 1
+    mes_proximo = mes_atual + 1 if mes_atual < 12 else 1
+    ano_proximo = ano_atual if mes_atual < 12 else ano_atual + 1
+    
+    meses_pt = {1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril', 5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto', 9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'}
+    nome_mes_atual = f"{meses_pt[mes_atual]} {ano_atual}"
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    cur.execute('SELECT * FROM metas WHERE usuario_id = %s AND mes = %s AND ano = %s', (user_id, mes_atual, ano_atual))
+    metas_db = cur.fetchall()
+    
+    lista_metas = []
+    total_disponivel_geral = 0.0
+    
+    for m in metas_db:
+        # Busca os gastos exatos daquela categoria naquele mês
+        cur.execute('''
+            SELECT SUM(valor) as total FROM transacoes 
+            WHERE usuario_id = %s AND categoria = %s AND data LIKE %s AND LOWER(TRIM(tipo)) IN ('despesa', 'saída', 'saida')
+        ''', (user_id, m['categoria'], f"{ano_atual}-{mes_atual:02d}-%"))
+        gasto_row = cur.fetchone()
+        gasto = float(gasto_row['total'] or 0.0)
+        
+        disponivel = float(m['limite']) - gasto
+        total_disponivel_geral += disponivel
+        
+        porcentagem = (gasto / float(m['limite'])) * 100 if m['limite'] > 0 else 0
+        if porcentagem > 100: porcentagem = 100
+        
+        cur.execute('SELECT id FROM metas WHERE usuario_id = %s AND categoria = %s AND mes = %s AND ano = %s', 
+                    (user_id, m['categoria'], mes_passado, ano_passado))
+        tem_anterior = True if cur.fetchone() else False
+        
+        lista_metas.append({
+            'id': m['id'],
+            'categoria': m['categoria'],
+            'limite': m['limite'],
+            'gasto': gasto,
+            'disponivel': disponivel,
+            'porcentagem': porcentagem,
+            'tem_anterior': tem_anterior
+        })
+        
+    # --- MÁGICA DAS CATEGORIAS REAIS ---
+    # Agora ele só vai buscar as categorias que realmente têm transações vinculadas ao seu usuário!
+    cur.execute('SELECT DISTINCT categoria FROM transacoes WHERE usuario_id = %s', (user_id,))
+    all_cats = sorted([row['categoria'] for row in cur.fetchall() if row['categoria']])
+    
+    cur.close()
+    conn.close()
+    
+    return render_template('metas.html', metas=lista_metas, all_cats=all_cats,
+                           total_disponivel=total_disponivel_geral,
+                           mes_passado=mes_passado, ano_passado=ano_passado,
+                           mes_proximo=mes_proximo, ano_proximo=ano_proximo,
+                           nome_mes_atual=nome_mes_atual, mes_atual=mes_atual, ano_atual=ano_atual)
+
+@app.route('/add_meta', methods=['POST'])
+def add_meta():
+    if 'user_id' not in session: return redirect(url_for('login'))
+    categoria = request.form['categoria'].strip()
+    limite = float(request.form['limite'])
+    mes = int(request.form['mes'])
+    ano = int(request.form['ano'])
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # Lógica blindada para salvar a meta: verifica se existe antes de inserir, evitando erros do PostgreSQL
+    cur.execute('SELECT id FROM metas WHERE usuario_id = %s AND categoria = %s AND mes = %s AND ano = %s', 
+                (session['user_id'], categoria, mes, ano))
+    meta_existente = cur.fetchone()
+    
+    if meta_existente:
+        cur.execute('UPDATE metas SET limite = %s WHERE id = %s', (limite, meta_existente['id']))
+    else:
+        cur.execute('''
+            INSERT INTO metas (usuario_id, categoria, limite, mes, ano)
+            VALUES (%s, %s, %s, %s, %s)
+        ''', (session['user_id'], categoria, limite, mes, ano))
+        
+    conn.commit()
+    cur.close()
+    conn.close()
+    
+    flash('Limite de gastos configurado!', 'success')
+    return redirect(url_for('metas', mes=mes, ano=ano))
+
+@app.route('/delete_meta/<int:id>')
+def delete_meta(id):
+    if 'user_id' not in session: return redirect(url_for('login'))
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('SELECT mes, ano FROM metas WHERE id = %s AND usuario_id = %s', (id, session['user_id']))
+    meta = cur.fetchone()
+    if meta:
+        mes, ano = meta['mes'], meta['ano']
+        cur.execute('DELETE FROM metas WHERE id = %s AND usuario_id = %s', (id, session['user_id']))
+        conn.commit()
+        cur.close()
+        conn.close()
+        flash('Limite removido.', 'success')
+        return redirect(url_for('metas', mes=mes, ano=ano))
+    cur.close()
+    conn.close()
+    return redirect(url_for('metas'))
+
+@app.route('/meta_detalhes/<int:meta_id>')
+def meta_detalhes(meta_id):
+    if 'user_id' not in session: return redirect(url_for('login'))
+    user_id = session['user_id']
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM metas WHERE id = %s AND usuario_id = %s', (meta_id, user_id))
+    meta = cur.fetchone()
+    
+    if not meta:
+        cur.close()
+        conn.close()
+        return redirect(url_for('metas'))
+        
+    mes_atual = meta['mes']
+    ano_atual = meta['ano']
+    
+    # Coleta todas as transações da categoria neste mês específico
+    cur.execute('''
+        SELECT * FROM transacoes 
+        WHERE usuario_id = %s AND categoria = %s AND data LIKE %s
+        ORDER BY data DESC
+    ''', (user_id, meta['categoria'], f"{ano_atual}-{mes_atual:02d}-%"))
+    transacoes = cur.fetchall()
+    
+    gasto = sum(float(t['valor']) for t in transacoes if str(t['tipo']).strip().lower() in ['despesa', 'saída', 'saida'])
+    disponivel = float(meta['limite']) - gasto
+    porcentagem = (gasto / float(meta['limite'])) * 100 if meta['limite'] > 0 else 0
+    if porcentagem > 100: porcentagem = 100
+    
+    # Análise comparativa básica com o mês anterior
+    mes_passado = mes_atual - 1 if mes_atual > 1 else 12
+    ano_passado = ano_atual if mes_atual > 1 else ano_atual - 1
+    
+    cur.execute('''
+        SELECT SUM(valor) as total FROM transacoes 
+        WHERE usuario_id = %s AND categoria = %s AND data LIKE %s AND LOWER(TRIM(tipo)) IN ('despesa', 'saída', 'saida')
+    ''', (user_id, meta['categoria'], f"{ano_passado}-{mes_passado:02d}-%"))
+    gasto_anterior = float(cur.fetchone()['total'] or 0.0)
+    
+    diferenca = 0.0
+    if gasto_anterior > 0:
+        diferenca = ((gasto - gasto_anterior) / gasto_anterior) * 100
+        
+    cur.close()
+    conn.close()
+    
+    meses_pt_curto = {1: 'maio', 2: 'fevereiro', 3: 'março', 4: 'abril', 5: 'maio', 6: 'junho', 7: 'julho', 8: 'agosto', 9: 'setembro', 10: 'outubro', 11: 'novembro', 12: 'dezembro'}
+    
+    return render_template('meta_detalhes.html', meta=meta, transacoes=transacoes, 
+                           gasto=gasto, disponivel=disponivel, porcentagem=porcentagem,
+                           diferenca=diferenca, nome_mes_anterior=meses_pt_curto[mes_passado])
 
 if __name__ == '__main__':
     init_db()

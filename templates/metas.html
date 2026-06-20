@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXPASS - Limites de Gastos</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { background: #121212; color: #fff; font-family: 'Montserrat', sans-serif; margin: 0; padding: 0; }
+        .app-container { max-width: 600px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; background: #1a1a1a; padding-bottom: 80px; box-sizing: border-box; }
+        
+        .header { display: flex; align-items: center; justify-content: space-between; padding: 20px; border-bottom: 1px solid #333; }
+        .header h1 { font-size: 18px; margin: 0; font-weight: 600; }
+        .btn-voltar { color: #fff; text-decoration: none; display: flex; align-items: center; }
+
+        .month-nav { display: flex; justify-content: space-between; align-items: center; padding: 20px; font-size: 14px; color: #888; }
+        .month-active { border: 1px solid #555; padding: 8px 20px; border-radius: 20px; color: #fff; font-weight: 600; text-transform: capitalize; }
+        .month-link { color: #888; text-decoration: none; display: flex; align-items: center; gap: 5px; }
+
+        .meta-list { flex: 1; padding: 0 20px; display: flex; flex-direction: column; gap: 15px; }
+        
+        /* Card das metas com a barra vertical */
+        .meta-card { background: #222; border-radius: 16px; padding: 20px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #2a2a2a; cursor: pointer; transition: 0.2s; }
+        .meta-card:hover { transform: translateY(-2px); border-color: #444; }
+        .meta-info-left { display: flex; flex-direction: column; gap: 12px; width: 85%; }
+        .meta-title-row { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 16px; }
+        .icon-box { width: 32px; height: 32px; border-radius: 50%; background: #3f51b5; display: flex; align-items: center; justify-content: center; }
+        .meta-label-disponivel { font-size: 12px; color: #888; margin-bottom: 2px; }
+        .meta-amount-highlight { font-size: 20px; font-weight: 800; }
+        .meta-amount-highlight span { font-size: 14px; color: #666; font-weight: 400; }
+        .meta-footer-text { font-size: 12px; color: #666; font-style: italic; margin-top: 5px; }
+
+        /* A Barra Vertical Verde Exata do Printscreen */
+        .vertical-progress-track { width: 12px; height: 90px; background: #2a2a2a; border-radius: 6px; overflow: hidden; position: relative; }
+        .vertical-progress-bar { width: 100%; background: #4CAF50; position: absolute; bottom: 0; transition: height 0.5s ease-on-out; }
+
+        /* Barra Inferior Fixada */
+        .footer-sticky { position: fixed; bottom: 0; max-width: 600px; width: 100%; background: #121212; padding: 20px; border-top: 1px solid #333; box-sizing: border-box; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 600; }
+        
+        /* Modal */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); align-items: center; justify-content: center; }
+        .modal-content { background: #1e1e1e; padding: 30px; border-radius: 24px; width: 90%; max-width: 360px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); border: 1px solid #333; }
+        .modal-input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 10px; border: 1px solid #444; background: #2a2a2a; color: white; font-family: inherit; box-sizing: border-box; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="header">
+        <a href="/dashboard" class="btn-voltar"><i data-lucide="chevron-left"></i></a>
+        <h1>Limites de gastos</h1>
+        <i data-lucide="plus" onclick="openModal('modalNovaMeta')" style="cursor: pointer; color: #fff;"></i>
+    </div>
+
+    <div class="month-nav">
+        <a href="/metas?mes={{ mes_passado }}&ano={{ ano_passado }}" class="month-link">
+            <i data-lucide="chevron-left" size="18"></i>
+        </a>
+        <div class="month-active">{{ nome_mes_atual }}</div>
+        <a href="/metas?mes={{ mes_proximo }}&ano={{ ano_proximo }}" class="month-link">
+            <i data-lucide="chevron-right" size="18"></i>
+        </a>
+    </div>
+
+    <div class="meta-list">
+        {% for meta in metas %}
+        <div class="meta-card" onclick="window.location.href='/meta_detalhes/{{ meta.id }}'">
+            <div class="meta-info-left">
+                <div class="meta-title-row">
+                    <div class="icon-box">
+                        <i data-lucide="{% if meta.categoria in ['Alimentação','Comidas'] %}utensils{% elif meta.categoria == 'Lazer' %}tv{% else %}pie-chart{% endif %}" size="16"></i>
+                    </div>
+                    <span>{{ meta.categoria }}</span>
+                </div>
+                <div>
+                    <div class="meta-label-disponivel">Disponível</div>
+                    <div class="meta-amount-highlight">R$ {{ meta.disponivel | brl }} <span>/ R$ {{ meta.limite | brl }}</span></div>
+                </div>
+                <div class="meta-footer-text">
+                    {% if meta.tem_anterior %}
+                    Meta monitorada no mês passado.
+                    {% else %}
+                    Não há registro de meta para essa categoria no mês anterior
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Barra de Progresso Vertical -->
+            <div class="vertical-progress-track">
+                <div class="vertical-progress-bar" style="height: {{ meta.porcentagem }}%;"></div>
+            </div>
+        </div>
+        {% else %}
+        <div style="text-align: center; color: #666; margin-top: 60px; padding: 20px;">
+            <i data-lucide="target" size="48" style="opacity: 0.3; margin-bottom: 10px;"></i>
+            <p>Nenhum teto de gasto fixado para este mês. Toque no "+" para estabelecer uma meta.</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="footer-sticky">
+        <span style="color: #888;">Total disponível</span>
+        <span style="color: #4CAF50;">R$ {{ total_disponivel | brl }}</span>
+    </div>
+</div>
+
+<!-- Modal para Configurar Meta -->
+<div id="modalNovaMeta" class="modal">
+    <div class="modal-content">
+        <h3 style="margin-top: 0; text-align: center;">Fixar Limite de Categoria</h3>
+        <form method="POST" action="/add_meta">
+            <input type="hidden" name="mes" value="{{ mes_atual }}">
+            <input type="hidden" name="ano" value="{{ ano_atual }}">
+
+            <label style="font-size: 11px; color: #888; font-weight: 600; margin-bottom: 5px; display: block;">CATEGORIA</label>
+            <select name="categoria" class="modal-input" required>
+                {% for cat in all_cats %}
+                <option value="{{ cat }}">{{ cat }}</option>
+                {% endfor %}
+            </select>
+
+            <label style="font-size: 11px; color: #888; font-weight: 600; margin-bottom: 5px; display: block;">LIMITE MÁXIMO DE GASTO (R$)</label>
+            <input type="number" step="0.01" name="limite" class="modal-input" placeholder="Ex: 250.00" required>
+
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button type="button" onclick="closeModal('modalNovaMeta')" class="modal-input" style="background: #333; border: none; color: #fff; cursor: pointer;">Cancelar</button>
+                <button type="submit" class="modal-input" style="background: #007BFF; border: none; color: #fff; cursor: pointer; font-weight: bold;">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    lucide.createIcons();
+    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+</script>
+</body>
+</html>
