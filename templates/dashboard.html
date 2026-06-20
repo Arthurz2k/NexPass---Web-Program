@@ -82,15 +82,18 @@
 <body>
 
 <div class="dashboard-container">
-    <aside class="sidebar">
+   <aside class="sidebar">
         <div style="margin-bottom: 20px;">
             <img src="{{ url_for('static', filename='img/logo.png') }}" alt="NEXPASS Logo" style="height: 65px; object-fit: contain; filter: brightness(0) invert(1);">
         </div>
         
         <nav style="margin-top: 30px; display: flex; flex-direction: column; gap: 25px;">
-            <a href="#" style="color: var(--neon-blue); text-decoration: none; font-weight: 800; display: flex; align-items: center; gap: 10px;"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+            <a href="/dashboard" style="color: var(--neon-blue); font-weight: 800; text-decoration: none; display: flex; align-items: center; gap: 10px;"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+            
             <a href="/cartoes" style="color: #555; text-decoration: none; display: flex; align-items: center; gap: 10px;"><i data-lucide="credit-card"></i> Cartões</a>
-            <a href="#" style="color: #555; text-decoration: none; display: flex; align-items: center; gap: 10px;"><i data-lucide="trending-up"></i> Metas</a>
+            
+            <a href="/metas" style="color: #555; text-decoration: none; display: flex; align-items: center; gap: 10px;"><i data-lucide="trending-up"></i> Metas</a>
+            
             <a href="/logout" style="color: #ff4d4d; text-decoration: none; margin-top: auto; display: flex; align-items: center; gap: 10px;"><i data-lucide="log-out"></i> Sair</a>
         </nav>
     </aside>

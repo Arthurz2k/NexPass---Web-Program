@@ -117,104 +117,69 @@ def init_db():
             UNIQUE(usuario_id, categoria, mes, ano)
         )
     ''')
-    # ------------------------------------------------------------
+
+    # --- CRIAÇÃO DO SISTEMA DE ADMIN ---
+    cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='usuarios' AND column_name='is_admin'")
+    if not cur.fetchone():
+        cur.execute('ALTER TABLE usuarios ADD COLUMN is_admin BOOLEAN DEFAULT FALSE')
+        # Transforma automaticamente o seu primeiro usuário cadastrado no Dono/Admin do sistema!
+        cur.execute('UPDATE usuarios SET is_admin = TRUE WHERE id = 1')
 
     conn.commit()
     cur.close()
     conn.close()
 
-# --- MOTOR INTELIGENTE DE CATEGORIZAÇÃO (V2.0) ---
-def categorizar_automaticamente(descricao, categoria_pluggy='Outros'):
-    # 1. Normaliza a string (Tudo minúsculo e sem acentos)
+# --- MOTOR INTELIGENTE DE CATEGORIZAÇÃO (V3.0) ---
+def categorizar_automaticamente(descricao, categoria_pluggy='Outros', tipo_transacao='Despesa'):
     desc = str(descricao).lower()
     try:
         desc = ''.join(c for c in unicodedata.normalize('NFD', desc) if unicodedata.category(c) != 'Mn')
     except:
         pass 
-    
-    # 2. Limpeza de intermediários de pagamento comuns no Brasil
-    # Remove prefixos como "mp *", "pg*ton", "zp*" para o código ler apenas o nome da loja
+
     prefixos_limpar = ['mp*', 'mp *', 'pg*', 'pg *', 'pg*ton ', 'zp*', 'zp *', 'payu*', 'pag*']
     for prefixo in prefixos_limpar:
         if desc.startswith(prefixo):
             desc = desc.replace(prefixo, '', 1).strip()
 
-    # 3. Mega Dicionário de Palavras-chave Brasileiras
-    dicionario = {
-        'Alimentação': [
-            'ifood', 'rappi', 'mcdonalds', 'burger king', 'bk', 'mercado', 'supermercado', 
-            'atacadao', 'carrefour', 'padaria', 'restaurante', 'pizzaria', 'assai', 
-            'zaffari', 'ze delivery', 'outback', 'habibs', 'coco bambu', 'pao de acucar', 
-            'extra', 'hortifruti', 'swift', 'ambev', 'cacau show', 'kfc', 'subway', 'bar ', 
-            'botequim', 'cafe', 'lanchonete', 'confeitaria', 'sorveteria', 'doceria'
-        ],
-        'Transporte': [
-            'uber', '99', '99app', 'posto', 'ipiranga', 'shell', 'petrobras', 'ale', 'estacionamento', 
-            'pedagio', 'sem parar', 'veloe', 'conectcar', 'metro', 'cptm', 'passagem', 
-            'latam', 'gol', 'azul', 'decolar', '123milhas', 'localiza', 'movida', 'unidas', 
-            'bilhete unico', 'clickbus', 'buser', 'viacao', 'balsa'
-        ],
-        'Moradia': [
-            'enel', 'sabesp', 'copel', 'cemig', 'light', 'sanepar', 'compesa', 'ceb', 
-            'caesb', 'condominio', 'aluguel', 'iptu', 'internet', 'vivo', 'claro', 'tim', 
-            'oi', 'net ', 'sky', 'leroy merlin', 'telhanorte', 'c&c', 'tok stok', 'mobly', 'imobiliaria'
-        ],
-        'Saúde': [
-            'farmacia', 'drogasil', 'raia', 'pague menos', 'pacheco', 'sao paulo', 'unimed', 
-            'amil', 'sulamerica', 'bradesco saude', 'hapvida', 'hospital', 'clinica', 
-            'odontoprev', 'sorridentes', 'exame', 'laboratorio', 'fleury', 'sabin', 'terapia', 'psicologo'
-        ],
-        'Lazer e Assinaturas': [
-            'netflix', 'spotify', 'amazon prime', 'prime video', 'hbo', 'disney', 'star+', 'globoplay', 
-            'cinema', 'ingresso', 'cinemark', 'cinepolis', 'kinoplex', 'sympla', 'eventim', 
-            'steam', 'playstation', 'xbox', 'nintendo', 'itunes', 'google play', 'tinder', 
-            'deezer', 'twitch', 'apple.com/bill', 'riot games', 'smart fit', 'smartfit', 'academia'
-        ],
-        'Educação': [
-            'escola', 'faculdade', 'universidade', 'curso', 'alura', 'udemy', 'ingles', 'idiomas', 
-            'estacio', 'anhanguera', 'puc', 'mackenzie', 'fgv', 'livraria', 'saraiva', 'leitura'
-        ],
-        'Compras e Lojas': [
-            'amazon', 'mercadolivre', 'mercado livre', 'shopee', 'shein', 'aliexpress', 
-            'renner', 'riachuelo', 'c&a', 'cea', 'zara', 'centauro', 'netshoes', 'dafiti', 
-            'magalu', 'casas bahia', 'ponto frio', 'americanas', 'havan', 'boticario', 'natura', 'sephora',
-            'privalia'
-        ],
-        'Pets': [
-            'cobasi', 'petz', 'pet shop', 'veterinario', 'racao'
-        ],
-        'Taxas e Serviços': [
-            'tarifa', 'anuidade', 'iof', 'juros', 'multa', 'seguro', 'correios', 'loggi', 
-            'mensalidade', 'cartorio', 'despachante', 'hotmart'
-        ],
-        'Salário e Receitas': [
-            'salario', 'adiantamento', 'pagamento', 'honorarios', 'pix recebido', 'ted recebida', 
-            'doc recebido', 'rendimento', 'proventos', 'reembolso', 'restituicao', 'cashback'
-        ]
+    # SE FOR ENTRADA DE DINHEIRO (RECEITA)
+    if tipo_transacao.lower() in ['receita', 'entrada']:
+        dicionario_receitas = {
+            'Salário e Receitas': ['salario', 'adiantamento', 'honorarios', 'rendimento', 'proventos', 'restituicao'],
+            'Transferência Recebida': ['pix recebido', 'ted recebida', 'doc recebido', 'transferencia recebida', 'pix'],
+            'Cashback e Bônus': ['cashback', 'bonus', 'reembolso']
+        }
+        for categoria, palavras in dicionario_receitas.items():
+            if any(palavra in desc for palavra in palavras):
+                return categoria
+        return 'Outras Receitas'
+
+    # SE FOR SAÍDA DE DINHEIRO (DESPESA)
+    dicionario_despesas = {
+        'Pagamentos e Boletos': ['pagamento de boleto', 'pagamento de titulo', 'boleto', 'conta', 'imposto', 'darf', 'ipva', 'iptu'],
+        'Alimentação': ['ifood', 'rappi', 'mcdonalds', 'burger king', 'bk', 'mercado', 'supermercado', 'atacadao', 'carrefour', 'padaria', 'restaurante', 'pizzaria', 'assai', 'zaffari', 'ze delivery', 'outback', 'habibs', 'coco bambu', 'pao de acucar', 'extra', 'hortifruti', 'swift', 'ambev', 'cacau show', 'kfc', 'subway', 'bar ', 'botequim', 'cafe', 'lanchonete', 'confeitaria', 'sorveteria', 'doceria'],
+        'Transporte': ['uber', '99', '99app', 'posto', 'ipiranga', 'shell', 'petrobras', 'ale', 'estacionamento', 'pedagio', 'sem parar', 'veloe', 'conectcar', 'metro', 'cptm', 'passagem', 'latam', 'gol', 'azul', 'decolar', '123milhas', 'localiza', 'movida', 'unidas', 'bilhete unico', 'clickbus', 'buser', 'viacao', 'balsa'],
+        'Moradia': ['enel', 'sabesp', 'copel', 'cemig', 'light', 'sanepar', 'compesa', 'ceb', 'caesb', 'condominio', 'aluguel', 'internet', 'vivo', 'claro', 'tim', 'oi', 'net ', 'sky', 'leroy merlin', 'telhanorte', 'c&c', 'tok stok', 'mobly', 'imobiliaria'],
+        'Saúde': ['farmacia', 'drogasil', 'raia', 'pague menos', 'pacheco', 'sao paulo', 'unimed', 'amil', 'sulamerica', 'bradesco saude', 'hapvida', 'hospital', 'clinica', 'odontoprev', 'sorridentes', 'exame', 'laboratorio', 'fleury', 'sabin', 'terapia', 'psicologo'],
+        'Lazer e Assinaturas': ['netflix', 'spotify', 'amazon prime', 'prime video', 'hbo', 'disney', 'star+', 'globoplay', 'cinema', 'ingresso', 'cinemark', 'cinepolis', 'kinoplex', 'sympla', 'eventim', 'steam', 'playstation', 'xbox', 'nintendo', 'itunes', 'google play', 'tinder', 'deezer', 'twitch', 'apple.com/bill', 'riot games', 'smart fit', 'smartfit', 'academia'],
+        'Educação': ['escola', 'faculdade', 'universidade', 'curso', 'alura', 'udemy', 'ingles', 'idiomas', 'estacio', 'anhanguera', 'puc', 'mackenzie', 'fgv', 'livraria', 'saraiva', 'leitura'],
+        'Compras e Lojas': ['amazon', 'mercadolivre', 'mercado livre', 'shopee', 'shein', 'aliexpress', 'renner', 'riachuelo', 'c&a', 'cea', 'zara', 'centauro', 'netshoes', 'dafiti', 'magalu', 'casas bahia', 'ponto frio', 'americanas', 'havan', 'boticario', 'natura', 'sephora', 'privalia'],
+        'Pets': ['cobasi', 'petz', 'pet shop', 'veterinario', 'racao'],
+        'Taxas e Serviços': ['tarifa', 'anuidade', 'iof', 'juros', 'multa', 'seguro', 'correios', 'loggi', 'mensalidade', 'cartorio', 'despachante', 'hotmart'],
+        'Transferência Enviada': ['transferencia', 'pix enviado', 'ted enviada', 'doc enviado']
     }
 
-    # 4. Procura palavras-chave na descrição limpa
-    for categoria, palavras in dicionario.items():
+    for categoria, palavras in dicionario_despesas.items():
         if any(palavra in desc for palavra in palavras):
             return categoria
             
-    # 5. Captura Transferências via PIX genéricas
-    if 'pix' in desc:
-        return 'Transferência'
-
-    # 6. Fallback - Tenta traduzir o padrão original da Pluggy
     traducoes_pluggy = {
-        'Food and Drink': 'Alimentação',
-        'Travel': 'Transporte',
-        'Health': 'Saúde',
-        'Payment': 'Outros',
-        'Transfers': 'Transferência',
-        'Shopping': 'Compras e Lojas',
-        'Personal Care': 'Saúde'
+        'Food and Drink': 'Alimentação', 'Travel': 'Transporte', 'Health': 'Saúde',
+        'Payment': 'Pagamentos e Boletos', 'Transfers': 'Transferência Enviada',
+        'Shopping': 'Compras e Lojas', 'Personal Care': 'Saúde'
     }
-    
-    return traducoes_pluggy.get(categoria_pluggy, 'Outros')
-# ------------------------------------------
+    return traducoes_pluggy.get(categoria_pluggy, 'Outras Despesas')
+
 
 @app.route('/')
 def home():
@@ -264,14 +229,23 @@ def login():
         cur.close()
         conn.close()
         if user:
-            session['user_id'], session['user_nome'] = user['id'], user['nome']
-            return redirect(url_for('dashboard'))
+            session['user_id'] = user['id']
+            session['user_nome'] = user['nome']
+            session['is_admin'] = user.get('is_admin', False) # Salva na sessão se é admin
+            
+            # Bifurcação de acesso:
+            if session['is_admin']:
+                return redirect(url_for('admin'))
+            else:
+                return redirect(url_for('dashboard'))
+                
         flash('E-mail ou senha incorretos.', 'error')
     return render_template('login.html')
 
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session: return redirect(url_for('login'))
+    if session.get('is_admin'): return redirect(url_for('admin'))
     user_id = session['user_id']
     conn = get_db_connection()
     cur = conn.cursor()
@@ -527,7 +501,7 @@ def sincronizar_pluggy():
                 # -----------------------------------
                 
                 categoria_original_pluggy = t.get('category', 'Outros')
-                categoria = categorizar_automaticamente(descricao, categoria_original_pluggy)
+                categoria = categorizar_automaticamente(descricao, categoria_original_pluggy, tipo)
                 data_transacao = t.get('date', '')[:10]
 
                 cur.execute('''
@@ -795,24 +769,38 @@ def metas():
     total_disponivel_geral = 0.0
     
     for m in metas_db:
-        # Busca os gastos exatos daquela categoria naquele mês
+        # Puxa todas as transações DESTA categoria NESTE mês para o Pop-up
         cur.execute('''
-            SELECT SUM(valor) as total FROM transacoes 
-            WHERE usuario_id = %s AND categoria = %s AND data LIKE %s AND LOWER(TRIM(tipo)) IN ('despesa', 'saída', 'saida')
+            SELECT * FROM transacoes 
+            WHERE usuario_id = %s AND categoria = %s AND data LIKE %s
+            ORDER BY data DESC
         ''', (user_id, m['categoria'], f"{ano_atual}-{mes_atual:02d}-%"))
-        gasto_row = cur.fetchone()
-        gasto = float(gasto_row['total'] or 0.0)
+        transacoes_da_meta = cur.fetchall()
         
+        gasto = sum(float(t['valor']) for t in transacoes_da_meta if str(t['tipo']).strip().lower() in ['despesa', 'saída', 'saida'])
         disponivel = float(m['limite']) - gasto
         total_disponivel_geral += disponivel
         
         porcentagem = (gasto / float(m['limite'])) * 100 if m['limite'] > 0 else 0
         if porcentagem > 100: porcentagem = 100
         
+        # Puxa o total gasto no mês ANTERIOR para a porcentagem de comparação
+        cur.execute('''
+            SELECT SUM(valor) as total FROM transacoes 
+            WHERE usuario_id = %s AND categoria = %s AND data LIKE %s AND LOWER(TRIM(tipo)) IN ('despesa', 'saída', 'saida')
+        ''', (user_id, m['categoria'], f"{ano_passado}-{mes_passado:02d}-%"))
+        row_ant = cur.fetchone()
+        gasto_anterior = float(row_ant['total'] or 0.0) if row_ant else 0.0
+        
+        diferenca = 0.0
+        if gasto_anterior > 0:
+            diferenca = ((gasto - gasto_anterior) / gasto_anterior) * 100
+            
         cur.execute('SELECT id FROM metas WHERE usuario_id = %s AND categoria = %s AND mes = %s AND ano = %s', 
                     (user_id, m['categoria'], mes_passado, ano_passado))
         tem_anterior = True if cur.fetchone() else False
         
+        # Guardamos TUDO na lista para o HTML desenhar os modais ocultos (a diferenca está aqui agora!)
         lista_metas.append({
             'id': m['id'],
             'categoria': m['categoria'],
@@ -820,11 +808,11 @@ def metas():
             'gasto': gasto,
             'disponivel': disponivel,
             'porcentagem': porcentagem,
-            'tem_anterior': tem_anterior
+            'tem_anterior': tem_anterior,
+            'diferenca': diferenca,
+            'transacoes': transacoes_da_meta
         })
         
-    # --- MÁGICA DAS CATEGORIAS REAIS ---
-    # Agora ele só vai buscar as categorias que realmente têm transações vinculadas ao seu usuário!
     cur.execute('SELECT DISTINCT categoria FROM transacoes WHERE usuario_id = %s', (user_id,))
     all_cats = sorted([row['categoria'] for row in cur.fetchall() if row['categoria']])
     
@@ -940,6 +928,100 @@ def meta_detalhes(meta_id):
     return render_template('meta_detalhes.html', meta=meta, transacoes=transacoes, 
                            gasto=gasto, disponivel=disponivel, porcentagem=porcentagem,
                            diferenca=diferenca, nome_mes_anterior=meses_pt_curto[mes_passado])
+
+@app.route('/reclassificar_tudo')
+def reclassificar_tudo():
+    if 'user_id' not in session: 
+        return redirect(url_for('login'))
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # Busca todas as transações cadastradas pelo usuário
+    cur.execute('SELECT id, descricao, categoria, tipo FROM transacoes WHERE usuario_id = %s', (session['user_id'],))
+    transacoes = cur.fetchall()
+    
+    atualizadas = 0
+    for t in transacoes:
+        
+        nova_categoria = categorizar_automaticamente(t['descricao'], t['categoria'], t['tipo'])
+        # Se o motor inteligente descobriu uma categoria melhor, atualiza no banco
+        if nova_categoria != t['categoria']:
+            cur.execute('UPDATE transacoes SET categoria = %s WHERE id = %s', (nova_categoria, t['id']))
+            atualizadas += 1
+            
+    conn.commit()
+    cur.close()
+    conn.close()
+    
+    flash(f'Mágica feita! {atualizadas} transações antigas foram reclassificadas com a nova inteligência.', 'success')
+    return redirect(url_for('dashboard'))
+
+@app.route('/admin')
+def admin():
+    if 'user_id' not in session: return redirect(url_for('login'))
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # 1. Trava de Segurança
+    cur.execute('SELECT is_admin FROM usuarios WHERE id = %s', (session['user_id'],))
+    user = cur.fetchone()
+    if not user or not user['is_admin']:
+        flash('Acesso negado. Área restrita.', 'error')
+        cur.close()
+        conn.close()
+        return redirect(url_for('dashboard'))
+        
+    # 2. Métricas Globais
+    cur.execute('SELECT COUNT(*) as total FROM usuarios')
+    total_users = cur.fetchone()['total']
+    cur.execute('SELECT COUNT(*) as total FROM transacoes')
+    total_transacoes = cur.fetchone()['total']
+    cur.execute('SELECT COUNT(*) as total FROM cartoes')
+    total_cartoes = cur.fetchone()['total']
+    
+    # 3. Laboratório de Categorias
+    cur.execute('''
+        SELECT descricao, tipo, COUNT(*) as ocorrencias 
+        FROM transacoes 
+        WHERE categoria ILIKE '%Outr%'
+        GROUP BY descricao, tipo
+        ORDER BY ocorrencias DESC 
+        LIMIT 50
+    ''')
+    laboratorio = cur.fetchall()
+
+    # 4. NOVA FUNCIONALIDADE: Gestão de Usuários (Mede o engajamento)
+    cur.execute('''
+        SELECT u.id, u.nome, u.email, u.is_admin,
+               (SELECT COUNT(*) FROM transacoes t WHERE t.usuario_id = u.id) as total_tx,
+               (SELECT COUNT(*) FROM cartoes c WHERE c.usuario_id = u.id) as total_cartoes
+        FROM usuarios u
+        ORDER BY u.id ASC
+    ''')
+    lista_usuarios = cur.fetchall()
+
+    # 5. NOVA FUNCIONALIDADE: Monitoramento de API (Origem dos Dados)
+    cur.execute('''
+        SELECT 
+            CASE WHEN banco = 'Manual' THEN 'Lançamento Manual' ELSE 'API Pluggy' END as origem,
+            COUNT(*) as qtd
+        FROM transacoes
+        GROUP BY CASE WHEN banco = 'Manual' THEN 'Lançamento Manual' ELSE 'API Pluggy' END
+    ''')
+    origem_dados = cur.fetchall()
+    
+    cur.close()
+    conn.close()
+    
+    return render_template('admin.html', 
+                           total_users=total_users, 
+                           total_transacoes=total_transacoes, 
+                           total_cartoes=total_cartoes, 
+                           laboratorio=laboratorio,
+                           lista_usuarios=lista_usuarios,
+                           origem_dados=origem_dados)
 
 if __name__ == '__main__':
     init_db()

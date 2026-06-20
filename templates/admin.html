@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>NEXPASS - Admin Control</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { background: #0a0a0a; color: #e0e0e0; font-family: 'Montserrat', sans-serif; margin: 0; display: flex; min-height: 100vh; }
+        
+        .sidebar { width: 260px; background: #121212; border-right: 1px solid #222; padding: 30px; display: flex; flex-direction: column; }
+        .main-content { flex: 1; padding: 40px; overflow-y: auto; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #222; padding-bottom: 20px; margin-bottom: 30px; }
+        .header h1 { font-weight: 800; margin: 0; color: #fff; font-family: 'JetBrains Mono', monospace; letter-spacing: -1px; }
+        .badge-admin { background: #ff3366; color: white; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 40px; }
+        .kpi-card { background: #1a1a1a; padding: 25px; border-radius: 16px; border: 1px solid #333; display: flex; flex-direction: column; gap: 10px; }
+        .kpi-title { font-size: 11px; color: #888; text-transform: uppercase; font-weight: 700; letter-spacing: 1px; }
+        .kpi-value { font-size: 28px; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: #00D4FF; }
+
+        .section-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; margin-top: 40px; }
+        
+        .lab-table { width: 100%; border-collapse: collapse; background: #1a1a1a; border-radius: 12px; overflow: hidden; border: 1px solid #333; }
+        .lab-table th, .lab-table td { padding: 15px 20px; text-align: left; border-bottom: 1px solid #2a2a2a; font-size: 13px; }
+        .lab-table th { background: #222; font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+        .lab-table tr:hover { background: #222; }
+        
+        .code-text { font-family: 'JetBrains Mono', monospace; color: #ffcc00; font-size: 13px; }
+        .badge-role { padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+        .badge-admin-role { background: rgba(255, 51, 102, 0.1); color: #ff3366; border: 1px solid rgba(255, 51, 102, 0.3); }
+        .badge-user-role { background: rgba(0, 212, 255, 0.1); color: #00D4FF; border: 1px solid rgba(0, 212, 255, 0.3); }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div style="margin-bottom: 40px; text-align: center;">
+            <img src="{{ url_for('static', filename='img/logo_painel_admin.png') }}" alt="NEXPASS ADMIN" style="width: 100%; max-width: 190px; height: auto; object-fit: contain; filter: brightness(0) invert(1);">
+            <div style="color: #ff3366; font-family: 'JetBrains Mono'; font-size: 11px; margin-top: 15px;">// SYSTEM_ROOT</div>
+        </div>
+        
+        <nav style="display: flex; flex-direction: column; gap: 20px;">
+            <a href="/admin" style="color: #00D4FF; font-weight: 800; text-decoration: none; display: flex; align-items: center; gap: 10px;"><i data-lucide="terminal"></i> Visão Geral</a>
+            <a href="/logout" style="color: #ff4d4d; text-decoration: none; margin-top: 40px; display: flex; align-items: center; gap: 10px;"><i data-lucide="log-out"></i> Sair do Sistema</a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <div class="header">
+            <div>
+                <h1>NEXPASS_ADMIN</h1>
+                <p style="color: #888; margin: 5px 0 0 0; font-size: 14px;">Centro de Controle e Saúde do Banco de Dados</p>
+            </div>
+            <div class="badge-admin">Acesso Root</div>
+        </div>
+
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <span class="kpi-title">Total de Usuários</span>
+                <span class="kpi-value">{{ total_users }}</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-title">Volume de Transações</span>
+                <span class="kpi-value">{{ total_transacoes }}</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-title">Cartões Conectados</span>
+                <span class="kpi-value">{{ total_cartoes }}</span>
+            </div>
+            
+            <div class="kpi-card" style="border-color: #28a745;">
+                <span class="kpi-title" style="color: #28a745;">Volume Pluggy (API)</span>
+                <span class="kpi-value" style="color: #28a745;">
+                    {% set pluggy_count = 0 %}
+                    {% for item in origem_dados %}
+                        {% if item.origem == 'API Pluggy' %}
+                            {% set pluggy_count = item.qtd %}
+                            {{ item.qtd }}
+                        {% endif %}
+                    {% endfor %}
+                    {% if pluggy_count == 0 %}0{% endif %}
+                </span>
+            </div>
+        </div>
+
+        <h2 class="section-title"><i data-lucide="users" color="#00D4FF"></i> Contas Cadastradas</h2>
+        <table class="lab-table" style="margin-bottom: 40px;">
+            <thead>
+                <tr>
+                    <th style="width: 50px;">ID</th>
+                    <th>Nome / E-mail</th>
+                    <th style="text-align: center;">Permissão</th>
+                    <th style="text-align: center;">Transações</th>
+                    <th style="text-align: center;">Cartões</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in lista_usuarios %}
+                <tr>
+                    <td class="code-text">#{{ u.id }}</td>
+                    <td>
+                        <strong style="color: #fff; display: block; margin-bottom: 3px;">{{ u.nome }}</strong>
+                        <span style="color: #888;">{{ u.email }}</span>
+                    </td>
+                    <td style="text-align: center;">
+                        {% if u.is_admin %}
+                            <span class="badge-role badge-admin-role">Admin</span>
+                        {% else %}
+                            <span class="badge-role badge-user-role">Usuário</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: center; color: #fff;">{{ u.total_tx }}</td>
+                    <td style="text-align: center; color: #fff;">{{ u.total_cartoes }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h2 class="section-title"><i data-lucide="beaker" color="#ff3366"></i> Laboratório de Inteligência (Filtro de Ruído)</h2>
+        <p style="color: #888; font-size: 14px; margin-bottom: 20px;">As transações abaixo não foram reconhecidas pelo Motor V3.0. Copie o termo exato e insira no dicionário do código fonte.</p>
+
+        <table class="lab-table">
+            <thead>
+                <tr>
+                    <th>Descrição Bruta (API)</th>
+                    <th>Tipo</th>
+                    <th>Ocorrências</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in laboratorio %}
+                <tr>
+                    <td class="code-text">{{ item.descricao }}</td>
+                    <td>
+                        <span style="padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; background: {% if item.tipo|lower in ['receita', 'entrada'] %}rgba(40,167,69,0.2); color:#28a745{% else %}rgba(220,53,69,0.2); color:#dc3545{% endif %};">
+                            {{ item.tipo|upper }}
+                        </span>
+                    </td>
+                    <td><strong style="color: #fff;">{{ item.ocorrencias }}</strong>x</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="3" style="text-align: center; color: #666; padding: 40px;">
+                        <i data-lucide="check-circle" size="32" style="margin-bottom: 10px; color: #28a745;"></i><br>
+                        Excelente! O seu dicionário está mapeando 100% dos dados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </main>
+
+<script>lucide.createIcons();</script>
+</body>
+</html>
