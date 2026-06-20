@@ -12,10 +12,8 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
     <style>
-        /* Força o alerta moderno a ficar por cima da Pluggy */
         div.swal2-container { z-index: 2147483647 !important; }
         
-        /* Estilos Globais */
         :root { --neon-blue: #00D4FF; --deep-blue: #007BFF; }
         body { background: #f4f7f9; font-family: 'Montserrat', sans-serif; margin: 0; }
         .dashboard-container { display: flex; min-height: 100vh; }
@@ -39,43 +37,16 @@
 
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); align-items: center; justify-content: center; }
         .modal-content { background: white; padding: 40px; border-radius: 24px; width: 100%; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.1); }
-        /* ==========================================
-           Ajustes Exclusivos para o Dashboard Mobile
-           ========================================== */
+        
         @media (max-width: 768px) {
-            .dashboard-container {
-                flex-direction: column !important; /* Empilha a barra lateral e o conteúdo */
-            }
-            .sidebar {
-                width: 100% !important; /* Barra lateral ocupa a largura toda no topo */
-                padding: 20px !important;
-            }
-            .main-content {
-                padding: 20px !important; /* Dá um respiro nas bordas do conteúdo */
-            }
-            .stats-row {
-                grid-template-columns: 1fr !important; /* Saldo, Entradas e Saídas ficam um embaixo do outro */
-            }
-            .main-grid {
-                grid-template-columns: 1fr !important; /* Atividades e Gráfico de pizza ficam um embaixo do outro */
-            }
-            .header-flex {
-                flex-direction: column !important;
-                align-items: flex-start !important;
-                gap: 20px !important;
-            }
-            .header-flex div:last-child {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 10px;
-                width: 100%;
-            }
-            .btn-futuristic {
-                flex: 1;
-                justify-content: center;
-                font-size: 13px;
-                padding: 10px;
-            }
+            .dashboard-container { flex-direction: column !important; }
+            .sidebar { width: 100% !important; padding: 20px !important; }
+            .main-content { padding: 20px !important; }
+            .stats-row { grid-template-columns: 1fr !important; }
+            .main-grid { grid-template-columns: 1fr !important; }
+            .header-flex { flex-direction: column !important; align-items: flex-start !important; gap: 20px !important; }
+            .header-flex div:last-child { display: flex; flex-wrap: wrap; gap: 10px; width: 100%; }
+            .btn-futuristic { flex: 1; justify-content: center; font-size: 13px; padding: 10px; }
         }
     </style>
 </head>
@@ -89,11 +60,13 @@
         
         <nav style="margin-top: 30px; display: flex; flex-direction: column; gap: 25px;">
             <a href="/dashboard" style="color: var(--neon-blue); font-weight: 800; text-decoration: none; display: flex; align-items: center; gap: 10px;"><i data-lucide="layout-dashboard"></i> Dashboard</a>
-            
             <a href="/cartoes" style="color: #555; text-decoration: none; display: flex; align-items: center; gap: 10px;"><i data-lucide="credit-card"></i> Cartões</a>
-            
             <a href="/metas" style="color: #555; text-decoration: none; display: flex; align-items: center; gap: 10px;"><i data-lucide="trending-up"></i> Metas</a>
             
+            {% if info.is_admin and admin_panel_enabled %}
+            <a href="/admin" style="color: #ff3366; font-weight: 800; text-decoration: none; display: flex; align-items: center; gap: 10px;"><i data-lucide="shield-alert"></i> Painel Admin</a>
+            {% endif %}
+
             <a href="/logout" style="color: #ff4d4d; text-decoration: none; margin-top: auto; display: flex; align-items: center; gap: 10px;"><i data-lucide="log-out"></i> Sair</a>
         </nav>
     </aside>
@@ -151,33 +124,41 @@
 
         <div class="main-grid">
             
-            <section class="glass-panel" style="max-height: 450px; overflow-y: auto; display: block; width: 100%;">
+            <section class="glass-panel" style="max-height: 550px; overflow-y: auto; display: block; width: 100%;">
                 
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px;">
                     <h3 style="font-weight: 800; margin: 0;">Atividades Recentes</h3>
                     
-                    <form id="formFiltros" method="GET" action="/dashboard" style="display: flex; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                         
-                        <select name="filtro_banco" onchange="document.getElementById('formFiltros').submit()" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd; background: white;">
-                            <option value="Todos" {% if filtro_banco == 'Todos' %}selected{% endif %}>Todos os Bancos</option>
-                            {% for b in all_bancos %}
-                                <option value="{{ b }}" {% if filtro_banco == b %}selected{% endif %}>{{ b }}</option>
-                            {% endfor %}
-                        </select>
+                        <a href="/exportar_transacoes" class="btn-futuristic" style="background: #222; color: white; padding: 10px 16px; font-size: 13px; text-decoration: none; border-radius: 12px; display: flex; align-items: center; gap: 8px;" title="Exportar para Excel">
+                            <i data-lucide="download" size="16"></i> Exportar
+                        </a>
 
-                        <select name="filtro_tipo" onchange="document.getElementById('formFiltros').submit()" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd; background: white;">
-                            <option value="Todos" {% if filtro_tipo == 'Todos' %}selected{% endif %}>Todos os Tipos</option>
-                            <option value="Receita" {% if filtro_tipo == 'Receita' %}selected{% endif %}>Apenas Receitas</option>
-                            <option value="Despesa" {% if filtro_tipo == 'Despesa' %}selected{% endif %}>Apenas Despesas</option>
-                        </select>
+                        <form id="formFiltros" method="GET" action="/dashboard" style="display: flex; align-items: center; gap: 12px; margin: 0;">
+                            
+                            <select name="filtro_banco" onchange="document.getElementById('formFiltros').submit()" style="background: #222; color: white; padding: 10px 16px; font-size: 13px; font-family: inherit; font-weight: 700; border-radius: 12px; border: none; cursor: pointer; outline: none;">
+                                <option value="Todos" {% if filtro_banco == 'Todos' %}selected{% endif %}>Todos os Bancos</option>
+                                {% for b in all_bancos %}
+                                    <option value="{{ b }}" {% if filtro_banco == b %}selected{% endif %}>{{ b }}</option>
+                                {% endfor %}
+                            </select>
 
-                        <select name="filtro_categoria" onchange="document.getElementById('formFiltros').submit()" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd; background: white;">
-                            <option value="Todas" {% if filtro_categoria == 'Todas' %}selected{% endif %}>Todas as Categorias</option>
-                            {% for c in all_cats %}
-                                <option value="{{ c }}" {% if filtro_categoria == c %}selected{% endif %}>{{ c }}</option>
-                            {% endfor %}
-                        </select>
-                    </form>
+                            <select name="filtro_tipo" onchange="document.getElementById('formFiltros').submit()" style="background: #222; color: white; padding: 10px 16px; font-size: 13px; font-family: inherit; font-weight: 700; border-radius: 12px; border: none; cursor: pointer; outline: none;">
+                                <option value="Todos" {% if filtro_tipo == 'Todos' %}selected{% endif %}>Todos os Tipos</option>
+                                <option value="Receita" {% if filtro_tipo == 'Receita' %}selected{% endif %}>Apenas Receitas</option>
+                                <option value="Despesa" {% if filtro_tipo == 'Despesa' %}selected{% endif %}>Apenas Despesas</option>
+                            </select>
+
+                            <select name="filtro_categoria" onchange="document.getElementById('formFiltros').submit()" style="background: #222; color: white; padding: 10px 16px; font-size: 13px; font-family: inherit; font-weight: 700; border-radius: 12px; border: none; cursor: pointer; outline: none;">
+                                <option value="Todas" {% if filtro_categoria == 'Todas' %}selected{% endif %}>Todas as Categorias</option>
+                                {% for c in all_cats %}
+                                    <option value="{{ c }}" {% if filtro_categoria == c %}selected{% endif %}>{{ c }}</option>
+                                {% endfor %}
+                            </select>
+                            
+                        </form>
+                    </div>
                 </div>
                 
                 <table style="width: 100%; border-collapse: collapse;">
@@ -198,6 +179,18 @@
                     </tr>
                     {% endfor %}
                 </table>
+                
+                <div style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 25px; padding-bottom: 20px;">
+                    {% if page > 1 %}
+                        <a href="/dashboard?page={{ page - 1 }}&filtro_tipo={{ filtro_tipo }}&filtro_categoria={{ filtro_categoria }}&filtro_banco={{ filtro_banco }}" style="padding: 10px 20px; background: #222; border-radius: 10px; color: #fff; text-decoration: none; font-weight: 600; font-size: 13px; transition: 0.2s;"><i data-lucide="chevron-left" size="16" style="vertical-align: middle;"></i> Anterior</a>
+                    {% endif %}
+                    
+                    <span style="font-size: 13px; color: #888; font-weight: 600;">Página {{ page }} de {{ total_pages }}</span>
+                    
+                    {% if page < total_pages %}
+                        <a href="/dashboard?page={{ page + 1 }}&filtro_tipo={{ filtro_tipo }}&filtro_categoria={{ filtro_categoria }}&filtro_banco={{ filtro_banco }}" style="padding: 10px 20px; background: #222; border-radius: 10px; color: #fff; text-decoration: none; font-weight: 600; font-size: 13px; transition: 0.2s;">Próxima <i data-lucide="chevron-right" size="16" style="vertical-align: middle;"></i></a>
+                    {% endif %}
+                </div>
                 
             </section> 
             
@@ -220,7 +213,22 @@
         <h2 style="font-weight: 800;">Nova Transação</h2>
         <form action="/add_transacao" method="POST" style="display: flex; flex-direction: column; gap: 15px;">
             <input type="text" name="descricao" placeholder="Descrição" required style="padding: 12px; border-radius: 10px; border: 1px solid #ddd;">
-            <input type="number" step="0.01" name="valor" placeholder="Valor (R$)" required style="padding: 12px; border-radius: 10px; border: 1px solid #ddd;">
+            
+            <div style="display: flex; gap: 10px;">
+                <input type="number" step="0.01" name="valor" placeholder="Valor Total (R$)" required style="padding: 12px; border-radius: 10px; border: 1px solid #ddd; flex: 2;">
+                <select name="parcelas" style="padding: 12px; border-radius: 10px; border: 1px solid #ddd; flex: 1.2;">
+                    <option value="1">À vista</option>
+                    <option value="2">2x</option>
+                    <option value="3">3x</option>
+                    <option value="4">4x</option>
+                    <option value="5">5x</option>
+                    <option value="6">6x</option>
+                    <option value="10">10x</option>
+                    <option value="12">12x</option>
+                    <option value="24">24x</option>
+                </select>
+            </div>
+
             <select name="tipo" style="padding: 12px; border-radius: 10px; border: 1px solid #ddd;">
                 <option value="despesa">Despesa</option>
                 <option value="receita">Receita</option>
@@ -344,7 +352,6 @@
         }
     }
     
-    // GRÁFICO DINÂMICO
     const labels_grafico = {{ labels_cat | tojson | safe }};
     const dados_grafico = {{ valores_cat | tojson | safe }};
     

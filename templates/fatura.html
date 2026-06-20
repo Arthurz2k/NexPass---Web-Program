@@ -45,7 +45,7 @@
         .modal-input:focus { outline: none; border-color: #007BFF; }
         .btn-modal { flex: 1; padding: 12px; border-radius: 10px; border: none; font-weight: 700; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; gap: 5px; }
 
-        /* Estilos do Bottom Sheet / Detalhes (Baseado no screenshot) */
+        /* Estilos do Bottom Sheet / Detalhes */
         .sheet-icon-main { width: 60px; height: 60px; border-radius: 50%; background: #3f51b5; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px auto; box-shadow: 0 0 20px rgba(63, 81, 181, 0.4); }
         .sheet-badge { background: #223a2f; color: #4CAF50; padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; margin-bottom: 25px; }
         .action-row-buttons { display: flex; justify-content: center; gap: 15px; margin-bottom: 30px; border-bottom: 1px solid #333; padding-bottom: 20px; }
@@ -108,6 +108,18 @@
             <p>Nenhuma transação encontrada.</p>
         </div>
         {% endfor %}
+    </div>
+
+    <div style="display: flex; justify-content: center; align-items: center; gap: 15px; padding: 20px;">
+        {% if page > 1 %}
+            <a href="/fatura/{{ cartao.id }}?page={{ page - 1 }}&mes={{ mes_atual }}&ano={{ ano_atual }}&busca={{ busca }}&filtro_tipo={{ filtro_tipo }}&filtro_categoria={{ filtro_categoria }}&filtro_tag={{ filtro_tag }}" style="padding: 8px 16px; background: #2a2a2a; border-radius: 8px; color: #fff; text-decoration: none; font-weight: 600; font-size: 12px;"><i data-lucide="chevron-left" size="14" style="vertical-align: middle;"></i> Ant</a>
+        {% endif %}
+        
+        <span style="font-size: 12px; color: #888;">Pág {{ page }} de {{ total_pages }}</span>
+        
+        {% if page < total_pages %}
+            <a href="/fatura/{{ cartao.id }}?page={{ page + 1 }}&mes={{ mes_atual }}&ano={{ ano_atual }}&busca={{ busca }}&filtro_tipo={{ filtro_tipo }}&filtro_categoria={{ filtro_categoria }}&filtro_tag={{ filtro_tag }}" style="padding: 8px 16px; background: #2a2a2a; border-radius: 8px; color: #fff; text-decoration: none; font-weight: 600; font-size: 12px;">Próx <i data-lucide="chevron-right" size="14" style="vertical-align: middle;"></i></a>
+        {% endif %}
     </div>
 
     <div class="summary-footer">
@@ -239,7 +251,6 @@
     function openModal(id) { document.getElementById(id).style.display = 'flex'; }
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-    // Alimenta o modal dinamicamente ao clicar na linha da transação
     function verDetalhes(id, descricao, valorFormatted, tipo, data, categoria, tags, observacao) {
         document.getElementById('input_id').value = id;
         document.getElementById('detalhe_titulo_header').innerText = descricao;
@@ -254,7 +265,6 @@
         document.getElementById('input_tags').value = tags;
         document.getElementById('input_observacao').value = observacao;
 
-        // Configura o botão de exclusão rápida
         document.getElementById('btn_excluir_detalhe').href = '/delete_transacao_fatura/' + id + '/{{ cartao.id }}';
 
         openModal('modalDetalhesTransacao');

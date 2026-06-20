@@ -8,11 +8,12 @@ load_dotenv()
 import csv
 import io
 import re
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, make_response
+
 import requests
 import psycopg2
 from psycopg2.extras import RealDictCursor
-
 # Primeiro o app nasce
 app = Flask(__name__)
 
@@ -21,11 +22,14 @@ app.config['SESSION_COOKIE_NAME'] = '__session'
 app.secret_key = os.environ.get('SECRET_KEY')
 
 # Configuração da versão atual
-app.config['VERSION'] = '1.0.16'
+app.config['VERSION'] = '1.1.0'
+
+# --- TRAVA DE SEGURANÇA GLOBAL DO ADMIN ---
+ADMIN_PANEL_ENABLED = os.environ.get('ENABLE_ADMIN_PANEL', 'False') == 'True'
 
 @app.context_processor
-def inject_version():
-    return dict(versao_site=app.config['VERSION'])
+def inject_globals():
+    return dict(versao_site=app.config['VERSION'], admin_panel_enabled=ADMIN_PANEL_ENABLED)
 
 @app.template_filter('brl')
 def brl_filter(value):
@@ -33,6 +37,7 @@ def brl_filter(value):
         return f"{float(value):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     except:
         return "0,00"
+
 # --- MODO DE MANUTENÇÃO ---
 MODO_MANUTENCAO = False
 
@@ -79,7 +84,6 @@ def init_db():
         )
     ''')
     
-    # --- NOVA TABELA DE CARTÕES ---
     cur.execute('''
         CREATE TABLE IF NOT EXISTS cartoes (
             id SERIAL PRIMARY KEY,
@@ -91,21 +95,18 @@ def init_db():
         )
     ''')
     
-    # Adiciona a coluna cartao_id nas transações (se ainda não existir)
     cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='transacoes' AND column_name='cartao_id'")
     if not cur.fetchone():
         cur.execute('ALTER TABLE transacoes ADD COLUMN cartao_id INTEGER REFERENCES cartoes(id)')
-        # Adiciona a coluna tags nas transações (se ainda não existir)
+        
     cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='transacoes' AND column_name='tags'")
     if not cur.fetchone():
         cur.execute('ALTER TABLE transacoes ADD COLUMN tags TEXT')
 
-   # Adiciona a coluna observacao nas transações (se ainda não existir)
     cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='transacoes' AND column_name='observacao'")
     if not cur.fetchone():
         cur.execute('ALTER TABLE transacoes ADD COLUMN observacao TEXT')
 
-    # --- COLE ESTE BLOCO AQUI: NOVA TABELA DE METAS E LIMITES ---
     cur.execute('''
         CREATE TABLE IF NOT EXISTS metas (
             id SERIAL PRIMARY KEY,
@@ -118,11 +119,9 @@ def init_db():
         )
     ''')
 
-    # --- CRIAÇÃO DO SISTEMA DE ADMIN ---
     cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='usuarios' AND column_name='is_admin'")
     if not cur.fetchone():
         cur.execute('ALTER TABLE usuarios ADD COLUMN is_admin BOOLEAN DEFAULT FALSE')
-        # Transforma automaticamente o seu primeiro usuário cadastrado no Dono/Admin do sistema!
         cur.execute('UPDATE usuarios SET is_admin = TRUE WHERE id = 1')
 
     conn.commit()
@@ -142,7 +141,6 @@ def categorizar_automaticamente(descricao, categoria_pluggy='Outros', tipo_trans
         if desc.startswith(prefixo):
             desc = desc.replace(prefixo, '', 1).strip()
 
-    # SE FOR ENTRADA DE DINHEIRO (RECEITA)
     if tipo_transacao.lower() in ['receita', 'entrada']:
         dicionario_receitas = {
             'Salário e Receitas': ['salario', 'adiantamento', 'honorarios', 'rendimento', 'proventos', 'restituicao'],
@@ -154,7 +152,6 @@ def categorizar_automaticamente(descricao, categoria_pluggy='Outros', tipo_trans
                 return categoria
         return 'Outras Receitas'
 
-    # SE FOR SAÍDA DE DINHEIRO (DESPESA)
     dicionario_despesas = {
         'Pagamentos e Boletos': ['pagamento de boleto', 'pagamento de titulo', 'boleto', 'conta', 'imposto', 'darf', 'ipva', 'iptu'],
         'Alimentação': ['ifood', 'rappi', 'mcdonalds', 'burger king', 'bk', 'mercado', 'supermercado', 'atacadao', 'carrefour', 'padaria', 'restaurante', 'pizzaria', 'assai', 'zaffari', 'ze delivery', 'outback', 'habibs', 'coco bambu', 'pao de acucar', 'extra', 'hortifruti', 'swift', 'ambev', 'cacau show', 'kfc', 'subway', 'bar ', 'botequim', 'cafe', 'lanchonete', 'confeitaria', 'sorveteria', 'doceria'],
@@ -179,7 +176,6 @@ def categorizar_automaticamente(descricao, categoria_pluggy='Outros', tipo_trans
         'Shopping': 'Compras e Lojas', 'Personal Care': 'Saúde'
     }
     return traducoes_pluggy.get(categoria_pluggy, 'Outras Despesas')
-
 
 @app.route('/')
 def home():
@@ -231,10 +227,10 @@ def login():
         if user:
             session['user_id'] = user['id']
             session['user_nome'] = user['nome']
-            session['is_admin'] = user.get('is_admin', False) # Salva na sessão se é admin
+            session['is_admin'] = user.get('is_admin', False) 
             
-            # Bifurcação de acesso:
-            if session['is_admin']:
+            # Bifurcação segura
+            if session['is_admin'] and ADMIN_PANEL_ENABLED:
                 return redirect(url_for('admin'))
             else:
                 return redirect(url_for('dashboard'))
@@ -245,7 +241,8 @@ def login():
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session: return redirect(url_for('login'))
-    if session.get('is_admin'): return redirect(url_for('admin'))
+    if session.get('is_admin') and ADMIN_PANEL_ENABLED: return redirect(url_for('admin'))
+    
     user_id = session['user_id']
     conn = get_db_connection()
     cur = conn.cursor()
@@ -257,25 +254,36 @@ def dashboard():
     filtro_categoria = request.args.get('filtro_categoria', 'Todas')
     filtro_banco = request.args.get('filtro_banco', 'Todos')
 
-    query = "SELECT * FROM transacoes WHERE usuario_id = %s"
+    # --- LÓGICA DE PAGINAÇÃO (DASHBOARD) ---
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    offset = (page - 1) * per_page
+
+    query_base = " FROM transacoes WHERE usuario_id = %s"
     params = [user_id]
 
     if filtro_tipo != 'Todos':
-        query += " AND LOWER(tipo) = LOWER(%s)"
+        query_base += " AND LOWER(tipo) = LOWER(%s)"
         params.append(filtro_tipo)
-    
     if filtro_categoria != 'Todas':
-        query += " AND categoria = %s"
+        query_base += " AND categoria = %s"
         params.append(filtro_categoria)
-        
     if filtro_banco != 'Todos':
-        query += " AND banco = %s"
+        query_base += " AND banco = %s"
         params.append(filtro_banco)
 
-    query += " ORDER BY data DESC"
+    cur.execute("SELECT COUNT(*)" + query_base, tuple(params))
+    total_items = cur.fetchone()['count']
+    total_pages = (total_items + per_page - 1) // per_page
+    if total_pages == 0: total_pages = 1
+
+    query_final = "SELECT *" + query_base + " ORDER BY data DESC LIMIT %s OFFSET %s"
+    params_final = params.copy()
+    params_final.extend([per_page, offset])
     
-    cur.execute(query, tuple(params))
+    cur.execute(query_final, tuple(params_final))
     transacoes = cur.fetchall()
+    # ---------------------------------------
 
     cur.execute('SELECT DISTINCT banco FROM transacoes WHERE usuario_id = %s', (user_id,))
     db_bancos = cur.fetchall()
@@ -316,7 +324,13 @@ def dashboard():
     all_cats = list(set(default_cats + user_cats))
     all_cats.sort()
     
-    info = {"nome": session.get('user_nome', 'Usuário'), "saldo": format_brl(ent-sai), "entradas": format_brl(ent), "saidas": format_brl(sai)}
+    info = {
+        "nome": session.get('user_nome', 'Usuário'), 
+        "saldo": format_brl(ent-sai), 
+        "entradas": format_brl(ent), 
+        "saidas": format_brl(sai),
+        "is_admin": user_data.get('is_admin', False)
+    }
    
     cur.close()
     conn.close()
@@ -333,26 +347,59 @@ def dashboard():
                            filtro_tipo=filtro_tipo,
                            filtro_categoria=filtro_categoria,  
                            filtro_banco=filtro_banco,          
-                           all_bancos=all_bancos)              
+                           all_bancos=all_bancos,
+                           page=page,
+                           total_pages=total_pages)              
     
 @app.route('/importar_csv', methods=['POST'])
 def importar_csv():
-    # Mantive a rota, mas a lógica completa depende de regras de CSV. 
-    # Por padrão, ela redireciona para evitar quebra ao clicar.
     return redirect(url_for('dashboard'))
 
 @app.route('/add_transacao', methods=['POST'])
 def add_transacao():
-    if 'user_id' in session:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute('INSERT INTO transacoes (usuario_id, descricao, valor, tipo, categoria, data, banco) VALUES (%s,%s,%s,%s,%s,%s,%s)',
-                     (session['user_id'], request.form['descricao'], abs(float(request.form['valor'])), 
-                      request.form['tipo'], request.form['categoria'].strip(), request.form['data'], 'Manual'))
-        conn.commit()
-        cur.close()
-        conn.close()
-        flash('Transação salva!', 'success')
+    if 'user_id' not in session: return redirect(url_for('login'))
+    
+    # 1. Pega os dados do formulário
+    descricao_base = request.form['descricao'].strip()
+    valor_total = abs(float(request.form['valor']))
+    tipo = request.form['tipo']
+    categoria = request.form['categoria'].strip()
+    data_inicial = datetime.strptime(request.form['data'], '%Y-%m-%d')
+    parcelas = int(request.form.get('parcelas', 1))
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # 2. Divide o valor total pela quantidade de parcelas
+    valor_parcela = valor_total / parcelas
+    
+    # 3. Função ajudante para calcular os meses futuros corretamente
+    def add_months(current_date, months_to_add):
+        month = current_date.month - 1 + months_to_add
+        year = current_date.year + month // 12
+        month = month % 12 + 1
+        day = min(current_date.day, calendar.monthrange(year, month)[1])
+        return current_date.replace(year=year, month=month, day=day)
+
+    # 4. Cria as transações no banco (Loop)
+    for i in range(parcelas):
+        data_parcela = add_months(data_inicial, i)
+        
+        # Se for parcelado, adiciona a tag (1/3), (2/3)... no final do nome
+        if parcelas > 1:
+            desc_parcela = f"{descricao_base} ({i+1}/{parcelas})"
+        else:
+            desc_parcela = descricao_base
+            
+        cur.execute('''
+            INSERT INTO transacoes (usuario_id, descricao, valor, tipo, categoria, data, banco) 
+            VALUES (%s,%s,%s,%s,%s,%s,%s)
+        ''', (session['user_id'], desc_parcela, valor_parcela, tipo, categoria, data_parcela.strftime('%Y-%m-%d'), 'Manual'))
+    
+    conn.commit()
+    cur.close()
+    conn.close()
+    flash(f'Lançamento salvo! ({parcelas}x)' if parcelas > 1 else 'Transação salva!', 'success')
     return redirect(url_for('dashboard'))
 
 @app.route('/edit_transacao', methods=['POST'])
@@ -399,10 +446,6 @@ def clear_transacoes():
     flash('Todos os dados foram apagados!', 'success')
     return redirect(url_for('dashboard'))
 
-# ==========================================
-# INTEGRAÇÃO OPEN FINANCE (PLUGGY)
-# ==========================================
-
 @app.route('/gerar_token_pluggy')
 def gerar_token_pluggy():
     if 'user_id' not in session: 
@@ -447,8 +490,6 @@ def sincronizar_pluggy():
         item_req = requests.get(f"https://api.pluggy.ai/items/{item_id}", headers=headers)
         nome_banco = item_req.json().get('connector', {}).get('name', 'Pluggy Bank')
 
-        # --- O SEGREDO ESTÁ AQUI ---
-        # Esperamos 3 segundos para dar tempo de a Pluggy gerar o Cartão de Crédito lá nos servidores deles.
         time.sleep(3)
 
         contas_req = requests.get(f"https://api.pluggy.ai/accounts?itemId={item_id}", headers=headers)
@@ -460,11 +501,10 @@ def sincronizar_pluggy():
 
         for conta in contas:
             conta_id = conta['id']
-            tipo_conta = conta.get('type') # 'DEPOSITORY' (Conta) ou 'CREDIT' (Cartão)
+            tipo_conta = conta.get('type')
             
             cartao_db_id = None
             
-            # SE FOR CARTÃO DE CRÉDITO
             if tipo_conta == 'CREDIT':
                 nome_cartao = f"{nome_banco} {conta.get('name', 'Cartão')}"
                 credit_data = conta.get('creditData') or {}
@@ -491,14 +531,12 @@ def sincronizar_pluggy():
             for t in transacoes:
                 descricao = t.get('description', 'Transação Automática')
                 
-                # --- LEITURA BLINDADA DE VALORES ---
                 valor_bruto = t.get('amount')
                 if valor_bruto is None: 
                     valor_bruto = 0.0
                     
                 valor = abs(valor_bruto)
                 tipo = 'Despesa' if valor_bruto < 0 else 'Receita'
-                # -----------------------------------
                 
                 categoria_original_pluggy = t.get('category', 'Outros')
                 categoria = categorizar_automaticamente(descricao, categoria_original_pluggy, tipo)
@@ -543,7 +581,6 @@ def cartoes():
     cur.execute('SELECT * FROM usuarios WHERE id = %s', (user_id,))
     info = cur.fetchone()
 
-    # Bancos Conectados (Mantém a sua lógica original)
     cur.execute('''
         SELECT 
             banco,
@@ -555,7 +592,6 @@ def cartoes():
     ''', (user_id,))
     bancos_db = cur.fetchall()
 
-    # Busca os cartões cadastrados pelo usuário
     cur.execute('SELECT * FROM cartoes WHERE usuario_id = %s ORDER BY id DESC', (user_id,))
     meus_cartoes = cur.fetchall()
 
@@ -571,7 +607,6 @@ def cartoes():
         nome_imagem = nome_banco.lower().replace(' ', '_') + '.png'
         lista_bancos.append({'nome': nome_banco, 'saldo': saldo, 'receitas': rec, 'despesas': des, 'imagem': nome_imagem})
 
-    # Enviando a variável "cartoes" para o HTML
     return render_template('cartoes.html', info=info, bancos=lista_bancos, cartoes=meus_cartoes)
 
 @app.route('/add_cartao', methods=['POST'])
@@ -599,9 +634,7 @@ def delete_cartao(id):
     if 'user_id' not in session: return redirect(url_for('login'))
     conn = get_db_connection()
     cur = conn.cursor()
-    # Desvincula as transações deste cartão antes de excluir para não quebrar o banco
     cur.execute('UPDATE transacoes SET cartao_id = NULL WHERE cartao_id = %s AND usuario_id = %s', (id, session['user_id']))
-    # Exclui o cartão
     cur.execute('DELETE FROM cartoes WHERE id = %s AND usuario_id = %s', (id, session['user_id']))
     conn.commit()
     cur.close()
@@ -624,7 +657,6 @@ def fatura(cartao_id):
         flash('Cartão não encontrado.', 'error')
         return redirect(url_for('cartoes'))
 
-    # --- LÓGICA DE NAVEGAÇÃO DE MESES ---
     hoje = datetime.now()
     mes_atual = int(request.args.get('mes', hoje.month))
     ano_atual = int(request.args.get('ano', hoje.year))
@@ -637,40 +669,58 @@ def fatura(cartao_id):
     meses_pt = {1: 'Jan', 2: 'Fev', 3: 'Mar', 4: 'Abr', 5: 'Mai', 6: 'Jun', 7: 'Jul', 8: 'Ago', 9: 'Set', 10: 'Out', 11: 'Nov', 12: 'Dez'}
     nome_mes_atual = f"{meses_pt[mes_atual]} {ano_atual}"
 
-    # --- LÓGICA DOS FILTROS ---
     busca = request.args.get('busca', '').strip()
     filtro_tipo = request.args.get('filtro_tipo', 'Todos')
     filtro_categoria = request.args.get('filtro_categoria', 'Todas')
     filtro_tag = request.args.get('filtro_tag', 'Todas')
 
-    query = "SELECT * FROM transacoes WHERE cartao_id = %s AND usuario_id = %s"
-    params = [cartao_id, session['user_id']]
+    # --- LÓGICA DE PAGINAÇÃO E TOTAIS (FATURA) ---
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    offset = (page - 1) * per_page
 
-    query += " AND data LIKE %s"
-    params.append(f"{ano_atual}-{mes_atual:02d}-%")
+    query_base = " FROM transacoes WHERE cartao_id = %s AND usuario_id = %s AND data LIKE %s"
+    params = [cartao_id, session['user_id'], f"{ano_atual}-{mes_atual:02d}-%"]
 
     if busca:
-        query += " AND descricao ILIKE %s"
+        query_base += " AND descricao ILIKE %s"
         params.append(f"%{busca}%")
     if filtro_tipo != 'Todos':
-        query += " AND LOWER(TRIM(tipo)) = LOWER(%s)"
+        query_base += " AND LOWER(TRIM(tipo)) = LOWER(%s)"
         params.append(filtro_tipo)
     if filtro_categoria != 'Todas':
-        query += " AND categoria = %s"
+        query_base += " AND categoria = %s"
         params.append(filtro_categoria)
     if filtro_tag != 'Todas':
-        query += " AND tags ILIKE %s"
+        query_base += " AND tags ILIKE %s"
         params.append(f"%{filtro_tag}%")
 
-    query += " ORDER BY data DESC"
-    cur.execute(query, tuple(params))
-    transacoes = cur.fetchall()
+    # 1. Puxa TODAS as filtradas para calcular o Total da Fatura corretamente
+    cur.execute("SELECT *" + query_base, tuple(params))
+    todas_filtradas = cur.fetchall()
+    
+    total_items = len(todas_filtradas)
+    total_pages = (total_items + per_page - 1) // per_page
+    if total_pages == 0: total_pages = 1
 
-    # Busca Categorias Únicas
+    total_fatura = 0.0
+    for t in todas_filtradas:
+        tipo_t = str(t['tipo']).strip().lower()
+        if tipo_t in ['despesa', 'saída', 'saida']: total_fatura += float(t['valor'])
+        elif tipo_t in ['receita', 'entrada']: total_fatura -= float(t['valor'])
+
+    # 2. Puxa APENAS as 20 da página atual para a lista
+    query_final = "SELECT *" + query_base + " ORDER BY data DESC LIMIT %s OFFSET %s"
+    params_final = params.copy()
+    params_final.extend([per_page, offset])
+    
+    cur.execute(query_final, tuple(params_final))
+    transacoes = cur.fetchall()
+    # ---------------------------------------------
+
     cur.execute('SELECT DISTINCT categoria FROM transacoes WHERE cartao_id = %s AND usuario_id = %s', (cartao_id, session['user_id']))
     all_cats = sorted([row['categoria'] for row in cur.fetchall() if row['categoria']])
 
-    # MÁGICA DAS TAGS: Busca e separa todas as tags criadas pelo usuário para popular o filtro dropdown
     cur.execute("SELECT DISTINCT tags FROM transacoes WHERE cartao_id = %s AND usuario_id = %s AND tags IS NOT NULL AND tags != ''", (cartao_id, session['user_id']))
     tags_banco = cur.fetchall()
     lista_tags_unicas = set()
@@ -680,21 +730,13 @@ def fatura(cartao_id):
                 lista_tags_unicas.add(t_item.strip())
     all_tags = sorted(list(lista_tags_unicas))
 
-    # Limite total real
     cur.execute('SELECT valor, tipo FROM transacoes WHERE cartao_id = %s AND usuario_id = %s', (cartao_id, session['user_id']))
     total_real = 0.0
     for t in cur.fetchall():
-        tipo = str(t['tipo']).strip().lower()
-        if tipo in ['despesa', 'saída', 'saida']: total_real += float(t['valor'])
-        elif tipo in ['receita', 'entrada']: total_real -= float(t['valor'])
+        tipo_real = str(t['tipo']).strip().lower()
+        if tipo_real in ['despesa', 'saída', 'saida']: total_real += float(t['valor'])
+        elif tipo_real in ['receita', 'entrada']: total_real -= float(t['valor'])
     limite_disp = float(cartao['limite']) - total_real
-
-    # Total Filtrado na Tela
-    total_fatura = 0.0
-    for t in transacoes:
-        tipo = str(t['tipo']).strip().lower()
-        if tipo in ['despesa', 'saída', 'saida']: total_fatura += float(t['valor'])
-        elif tipo in ['receita', 'entrada']: total_fatura -= float(t['valor'])
 
     cur.close()
     conn.close()
@@ -705,7 +747,8 @@ def fatura(cartao_id):
                            all_cats=all_cats, all_tags=all_tags,
                            mes_passado=mes_passado, ano_passado=ano_passado,
                            mes_proximo=mes_proximo, ano_proximo=ano_proximo,
-                           nome_mes_atual=nome_mes_atual, mes_atual=mes_atual, ano_atual=ano_atual)
+                           nome_mes_atual=nome_mes_atual, mes_atual=mes_atual, ano_atual=ano_atual,
+                           page=page, total_pages=total_pages)
 
 @app.route('/salvar_detalhes_transacao', methods=['POST'])
 def salvar_detalhes_transacao():
@@ -769,7 +812,6 @@ def metas():
     total_disponivel_geral = 0.0
     
     for m in metas_db:
-        # Puxa todas as transações DESTA categoria NESTE mês para o Pop-up
         cur.execute('''
             SELECT * FROM transacoes 
             WHERE usuario_id = %s AND categoria = %s AND data LIKE %s
@@ -784,7 +826,6 @@ def metas():
         porcentagem = (gasto / float(m['limite'])) * 100 if m['limite'] > 0 else 0
         if porcentagem > 100: porcentagem = 100
         
-        # Puxa o total gasto no mês ANTERIOR para a porcentagem de comparação
         cur.execute('''
             SELECT SUM(valor) as total FROM transacoes 
             WHERE usuario_id = %s AND categoria = %s AND data LIKE %s AND LOWER(TRIM(tipo)) IN ('despesa', 'saída', 'saida')
@@ -800,7 +841,6 @@ def metas():
                     (user_id, m['categoria'], mes_passado, ano_passado))
         tem_anterior = True if cur.fetchone() else False
         
-        # Guardamos TUDO na lista para o HTML desenhar os modais ocultos (a diferenca está aqui agora!)
         lista_metas.append({
             'id': m['id'],
             'categoria': m['categoria'],
@@ -836,7 +876,6 @@ def add_meta():
     conn = get_db_connection()
     cur = conn.cursor()
     
-    # Lógica blindada para salvar a meta: verifica se existe antes de inserir, evitando erros do PostgreSQL
     cur.execute('SELECT id FROM metas WHERE usuario_id = %s AND categoria = %s AND mes = %s AND ano = %s', 
                 (session['user_id'], categoria, mes, ano))
     meta_existente = cur.fetchone()
@@ -875,60 +914,6 @@ def delete_meta(id):
     conn.close()
     return redirect(url_for('metas'))
 
-@app.route('/meta_detalhes/<int:meta_id>')
-def meta_detalhes(meta_id):
-    if 'user_id' not in session: return redirect(url_for('login'))
-    user_id = session['user_id']
-    
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute('SELECT * FROM metas WHERE id = %s AND usuario_id = %s', (meta_id, user_id))
-    meta = cur.fetchone()
-    
-    if not meta:
-        cur.close()
-        conn.close()
-        return redirect(url_for('metas'))
-        
-    mes_atual = meta['mes']
-    ano_atual = meta['ano']
-    
-    # Coleta todas as transações da categoria neste mês específico
-    cur.execute('''
-        SELECT * FROM transacoes 
-        WHERE usuario_id = %s AND categoria = %s AND data LIKE %s
-        ORDER BY data DESC
-    ''', (user_id, meta['categoria'], f"{ano_atual}-{mes_atual:02d}-%"))
-    transacoes = cur.fetchall()
-    
-    gasto = sum(float(t['valor']) for t in transacoes if str(t['tipo']).strip().lower() in ['despesa', 'saída', 'saida'])
-    disponivel = float(meta['limite']) - gasto
-    porcentagem = (gasto / float(meta['limite'])) * 100 if meta['limite'] > 0 else 0
-    if porcentagem > 100: porcentagem = 100
-    
-    # Análise comparativa básica com o mês anterior
-    mes_passado = mes_atual - 1 if mes_atual > 1 else 12
-    ano_passado = ano_atual if mes_atual > 1 else ano_atual - 1
-    
-    cur.execute('''
-        SELECT SUM(valor) as total FROM transacoes 
-        WHERE usuario_id = %s AND categoria = %s AND data LIKE %s AND LOWER(TRIM(tipo)) IN ('despesa', 'saída', 'saida')
-    ''', (user_id, meta['categoria'], f"{ano_passado}-{mes_passado:02d}-%"))
-    gasto_anterior = float(cur.fetchone()['total'] or 0.0)
-    
-    diferenca = 0.0
-    if gasto_anterior > 0:
-        diferenca = ((gasto - gasto_anterior) / gasto_anterior) * 100
-        
-    cur.close()
-    conn.close()
-    
-    meses_pt_curto = {1: 'maio', 2: 'fevereiro', 3: 'março', 4: 'abril', 5: 'maio', 6: 'junho', 7: 'julho', 8: 'agosto', 9: 'setembro', 10: 'outubro', 11: 'novembro', 12: 'dezembro'}
-    
-    return render_template('meta_detalhes.html', meta=meta, transacoes=transacoes, 
-                           gasto=gasto, disponivel=disponivel, porcentagem=porcentagem,
-                           diferenca=diferenca, nome_mes_anterior=meses_pt_curto[mes_passado])
-
 @app.route('/reclassificar_tudo')
 def reclassificar_tudo():
     if 'user_id' not in session: 
@@ -937,15 +922,12 @@ def reclassificar_tudo():
     conn = get_db_connection()
     cur = conn.cursor()
     
-    # Busca todas as transações cadastradas pelo usuário
     cur.execute('SELECT id, descricao, categoria, tipo FROM transacoes WHERE usuario_id = %s', (session['user_id'],))
     transacoes = cur.fetchall()
     
     atualizadas = 0
     for t in transacoes:
-        
         nova_categoria = categorizar_automaticamente(t['descricao'], t['categoria'], t['tipo'])
-        # Se o motor inteligente descobriu uma categoria melhor, atualiza no banco
         if nova_categoria != t['categoria']:
             cur.execute('UPDATE transacoes SET categoria = %s WHERE id = %s', (nova_categoria, t['id']))
             atualizadas += 1
@@ -959,12 +941,15 @@ def reclassificar_tudo():
 
 @app.route('/admin')
 def admin():
+    if not ADMIN_PANEL_ENABLED:
+        from flask import abort
+        abort(404)
+
     if 'user_id' not in session: return redirect(url_for('login'))
     
     conn = get_db_connection()
     cur = conn.cursor()
     
-    # 1. Trava de Segurança
     cur.execute('SELECT is_admin FROM usuarios WHERE id = %s', (session['user_id'],))
     user = cur.fetchone()
     if not user or not user['is_admin']:
@@ -973,7 +958,6 @@ def admin():
         conn.close()
         return redirect(url_for('dashboard'))
         
-    # 2. Métricas Globais
     cur.execute('SELECT COUNT(*) as total FROM usuarios')
     total_users = cur.fetchone()['total']
     cur.execute('SELECT COUNT(*) as total FROM transacoes')
@@ -981,7 +965,6 @@ def admin():
     cur.execute('SELECT COUNT(*) as total FROM cartoes')
     total_cartoes = cur.fetchone()['total']
     
-    # 3. Laboratório de Categorias
     cur.execute('''
         SELECT descricao, tipo, COUNT(*) as ocorrencias 
         FROM transacoes 
@@ -992,7 +975,6 @@ def admin():
     ''')
     laboratorio = cur.fetchall()
 
-    # 4. NOVA FUNCIONALIDADE: Gestão de Usuários (Mede o engajamento)
     cur.execute('''
         SELECT u.id, u.nome, u.email, u.is_admin,
                (SELECT COUNT(*) FROM transacoes t WHERE t.usuario_id = u.id) as total_tx,
@@ -1002,7 +984,6 @@ def admin():
     ''')
     lista_usuarios = cur.fetchall()
 
-    # 5. NOVA FUNCIONALIDADE: Monitoramento de API (Origem dos Dados)
     cur.execute('''
         SELECT 
             CASE WHEN banco = 'Manual' THEN 'Lançamento Manual' ELSE 'API Pluggy' END as origem,
@@ -1023,8 +1004,53 @@ def admin():
                            lista_usuarios=lista_usuarios,
                            origem_dados=origem_dados)
 
+@app.route('/exportar_transacoes')
+def exportar_transacoes():
+    if 'user_id' not in session: 
+        return redirect(url_for('login'))
+        
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # Busca todo o histórico financeiro do usuário
+    cur.execute('''
+        SELECT data, descricao, categoria, valor, tipo, banco 
+        FROM transacoes 
+        WHERE usuario_id = %s 
+        ORDER BY data DESC
+    ''', (session['user_id'],))
+    transacoes = cur.fetchall()
+    
+    cur.close()
+    conn.close()
+    
+    # Criamos o arquivo CSV em memória usando a biblioteca 'io'
+    si = io.StringIO()
+    # Usamos o delimitador ';' porque o Excel em português reconhece automaticamente como colunas
+    cw = csv.writer(si, delimiter=';', lineterminator='\n')
+    
+    # Escreve o cabeçalho do arquivo
+    cw.writerow(['Data', 'Descricao', 'Categoria', 'Valor (R$)', 'Tipo', 'Origem/Banco'])
+    
+    # Preenche o CSV com os dados
+    for t in transacoes:
+        cw.writerow([
+            t['data'],
+            t['descricao'],
+            t['categoria'],
+            f"{t['valor']:.2f}".replace('.', ','), # Formata o número com vírgula para o Excel BR
+            t['tipo'],
+            t['banco'] if t['banco'] else 'Manual'
+        ])
+    
+    # Transforma o conteúdo em uma resposta de download (Attachment)
+    output = make_response(si.getvalue())
+    output.headers["Content-Disposition"] = f"attachment; filename=nexpass_extrato_{datetime.now().strftime('%Y%m%d')}.csv"
+    output.headers["Content-Type"] = "text/csv; charset=utf-8-sig" # 'utf-8-sig' resolve bugs de acentuação no Excel Windows
+    
+    return output
+
 if __name__ == '__main__':
     init_db()
-    # Preparado para o Google Cloud Run!
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port, debug=True)
